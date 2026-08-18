@@ -416,7 +416,7 @@
                             <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold tracking-widest shadow-lg cursor-pointer">SAVE</button>
                         </div>
                         <div class="w-full h-px bg-white/10 my-4"></div>
-                        <button type="button" id="logout-btn" class="glass-input w-full py-2 rounded-lg text-[#ef4444] border-[#ef4444]/30 hover:bg-[#ef4444]/10 hover:border-[#ef4444]/80 text-xs font-bold tracking-widest cursor-pointer transition-all">DISCONNECT</button>
+                        <button type="button" id="logout-btn" class="glass-input w-full py-2 rounded-lg text-[#f59e0b] border-[#f59e0b]/30 hover:bg-[#f59e0b]/10 hover:border-[#f59e0b]/80 text-xs font-bold tracking-widest cursor-pointer transition-all">DISCONNECT</button>
                     </form>
                 </div>
             </div>
@@ -594,7 +594,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Environment Variables
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'hive-mind-default';
@@ -904,9 +904,19 @@
         async function seedDatabaseIfEmpty() {
             const snap = await getDocs(nodesCollection);
             if (snap.empty) {
-                logAction('SYSTEM', 'Database empty. Constructing initial cloud topology...');
-                await generateInitialTopology(false);
-                logAction('SYSTEM', 'Initial topology uploaded to cloud.');
+                logAction('SYSTEM', 'Database empty. Initializing Core cluster...');
+                
+                // For real authenticated users, only generate the absolute root node
+                const batch = writeBatch(db);
+                const core = createNodeData('core', null, 'core', 'CORE', 'Central Neural Hub', '#06b6d4', 0, 0);
+                
+                const clean = { ...core };
+                delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
+                
+                batch.set(doc(nodesCollection, core.id), clean);
+                await batch.commit();
+                
+                logAction('SYSTEM', 'Core initialized on cloud. Ready for input.');
             } else {
                 logAction('SYSTEM', 'Neural Network synced from cloud database.');
             }
