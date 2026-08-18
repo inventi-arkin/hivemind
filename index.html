@@ -75,6 +75,22 @@
         .glass-button:disabled::after { display: none; }
         select option { background: #020205; color: white; }
 
+        /* --- Date Picker Styling --- */
+        input[type="date"] {
+            color-scheme: dark; /* Forces native dark mode popup */
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background-color: transparent;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            filter: invert(1) opacity(0.6);
+            transition: all 0.2s;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            filter: invert(1) opacity(1) drop-shadow(0 0 5px #06b6d4);
+        }
+
         /* --- VIEW CONTAINERS --- */
         #login-view { transition: opacity 1s ease, transform 1s ease; position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 50; }
         #home-view { opacity: 0; pointer-events: none; transition: opacity 1.5s ease-in-out; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 40; display: none; overflow: hidden; }
@@ -156,7 +172,7 @@
         .chat-bubble.me .chat-author { color: #06b6d4; }
 
         /* --- Archive Galaxy Directory --- */
-        #archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; padding-right: 5px; align-content: start; align-items: start; }
+        #archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; padding: 10px 5px 10px 5px; align-content: start; align-items: start; }
         .galaxy-card {
             background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
             padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;
@@ -284,6 +300,9 @@
                 <div id="login-error" class="hidden text-[#ef4444] text-[9px] font-bold tracking-widest uppercase mt-4 border border-[#ef4444]/30 bg-[#ef4444]/10 p-2 rounded">
                     ACCESS DENIED. UNAUTHORIZED DOMAIN.
                 </div>
+                <button id="test-mode-btn" class="hidden glass-button w-full py-3 rounded-lg text-white text-xs font-bold tracking-[0.1em] shadow-lg flex items-center justify-center gap-3 mt-4" style="background: linear-gradient(90deg, #64748b, #475569);">
+                    ENTER TEST MODE (OFFLINE)
+                </button>
             </div>
         </div>
     </div>
@@ -396,6 +415,8 @@
                             <button type="button" onclick="document.getElementById('profile-modal').style.display='none'" class="glass-input w-1/2 py-2 rounded-lg text-white text-xs font-bold tracking-widest cursor-pointer">CANCEL</button>
                             <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold tracking-widest shadow-lg cursor-pointer">SAVE</button>
                         </div>
+                        <div class="w-full h-px bg-white/10 my-4"></div>
+                        <button type="button" id="logout-btn" class="glass-input w-full py-2 rounded-lg text-[#ef4444] border-[#ef4444]/30 hover:bg-[#ef4444]/10 hover:border-[#ef4444]/80 text-xs font-bold tracking-widest cursor-pointer transition-all">DISCONNECT</button>
                     </form>
                 </div>
             </div>
@@ -572,7 +593,7 @@
     <!-- FIREBASE INTEGRATION -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Environment Variables
@@ -608,12 +629,14 @@
         let hideDoneNodes = false;
         let isAppStarted = false;
         let targetCameraPos = null;
+        let isTestMode = false;
 
         // --- DOM ELEMENT CACHING ---
         // Views & Auth
         const loginView = document.getElementById('login-view');
         const googleLoginBtn = document.getElementById('google-login-btn');
         const loginError = document.getElementById('login-error');
+        const testModeBtn = document.getElementById('test-mode-btn');
         const authModal = document.getElementById('auth-modal');
         const authForm = document.getElementById('auth-form');
         const authEmailInput = document.getElementById('auth-email-input');
@@ -642,11 +665,11 @@
         const ctxListBtn = document.getElementById('ctx-list-btn');
 
         // Modals & Forms
-        const viewOptionsWidget = document.getElementById('view-options-widget');
         const viewOptionsMenu = document.getElementById('view-options-menu');
         const searchInput = document.getElementById('search-input');
         const searchResults = document.getElementById('search-results');
         const chatModal = document.getElementById('chat-modal');
+        const logoutBtn = document.getElementById('logout-btn');
 
         // --- INITIALIZE THREE.JS ---
         const scene = new THREE.Scene();
@@ -724,6 +747,13 @@
         }
 
         async function pushNodeToDB(nodeData) {
+            if (isTestMode) {
+                const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                nodes.push(node);
+                createWebGLNode(node);
+                rebuildEdges();
+                return;
+            }
             if (!userId) return;
             const cleanData = { ...nodeData };
             delete cleanData.threeGroup; delete cleanData.htmlLabel; delete cleanData.dustRef; delete cleanData.vx; delete cleanData.vy;
@@ -731,6 +761,16 @@
         }
 
         async function updateNodeInDB(nodeId, updates) {
+            if (isTestMode) {
+                const node = nodes.find(n => n.id === nodeId);
+                if (node) {
+                    Object.assign(node, updates);
+                    createWebGLNode(node); // Refreshes visuals
+                    rebuildEdges();
+                    updateHelpList();
+                }
+                return;
+            }
             if (!userId) return;
             try { await updateDoc(doc(nodesCollection, nodeId), updates); } catch(e) { console.error("Error updating node", e); }
         }
@@ -801,60 +841,71 @@
             rebuildLineGeometry();
         }
 
-        async function seedDatabaseIfEmpty() {
-            const snap = await getDocs(nodesCollection);
-            if (snap.empty) {
-                logAction('SYSTEM', 'Database empty. Constructing initial cloud topology...');
-                const batch = writeBatch(db);
-                
-                function queueToBatch(nodeData) {
+        async function generateInitialTopology(isLocal) {
+            let batch;
+            if (!isLocal) batch = writeBatch(db);
+            
+            function queueNode(nodeData) {
+                if (isLocal) {
+                    const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                    nodes.push(node);
+                    createWebGLNode(node);
+                } else {
                     const clean = { ...nodeData };
                     delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
                     batch.set(doc(nodesCollection, nodeData.id), clean);
                 }
+            }
 
-                // Generates plain data objects
-                const core = createNodeData('core', null, 'core', 'CORE', '', '#06b6d4', 0, 0); queueToBatch(core);
+            const core = createNodeData('core', null, 'core', 'CORE', '', '#06b6d4', 0, 0); queueNode(core);
 
-                for (let i = 0; i < departmentNames.length; i++) {
-                    const angle = (Math.PI * 2 / departmentNames.length) * i; const distance = 400 + Math.random() * 100; const deptColor = colors[i % colors.length];
-                    const dept = createNodeData(`dept-${i}`, core.id, 'dept', departmentNames[i], '', deptColor, Math.cos(angle) * distance, Math.sin(angle) * distance);
-                    queueToBatch(dept);
-                    
-                    const numTopics = 3 + Math.floor(Math.random() * 3);
-                    for(let j = 0; j < numTopics; j++) {
-                        const tAngle = angle + (Math.random() - 0.5); const tDist = distance + 150 + Math.random() * 80;
-                        const topic = createNodeData(`dept-${i}-topic-${j}`, dept.id, 'topic', `Topic ${j+1}`, `Auto generated.`, deptColor, Math.cos(tAngle) * tDist, Math.sin(tAngle) * tDist);
-                        queueToBatch(topic);
+            for (let i = 0; i < departmentNames.length; i++) {
+                const angle = (Math.PI * 2 / departmentNames.length) * i; const distance = 400 + Math.random() * 100; const deptColor = colors[i % colors.length];
+                const dept = createNodeData(`dept-${i}`, core.id, 'dept', departmentNames[i], '', deptColor, Math.cos(angle) * distance, Math.sin(angle) * distance);
+                queueNode(dept);
+                
+                const numTopics = 3 + Math.floor(Math.random() * 3);
+                for(let j = 0; j < numTopics; j++) {
+                    const tAngle = angle + (Math.random() - 0.5); const tDist = distance + 150 + Math.random() * 80;
+                    const topic = createNodeData(`dept-${i}-topic-${j}`, dept.id, 'topic', `Topic ${j+1}`, `Auto generated.`, deptColor, Math.cos(tAngle) * tDist, Math.sin(tAngle) * tDist);
+                    queueNode(topic);
 
-                        if(Math.random() > 0.3) {
-                            const numNotes = 1 + Math.floor(Math.random() * 3);
-                            for(let k=0; k<numNotes; k++) {
-                                const nAngle = tAngle + (Math.random() - 0.5); const nDist = tDist + 80;
-                                const note = createNodeData(`topic-${j}-note-${k}`, topic.id, 'note', `Note ${k+1}`, ``, deptColor, Math.cos(nAngle) * nDist, Math.sin(nAngle) * nDist);
-                                if (Math.random() > 0.8) note.needsHelp = true;
+                    if(Math.random() > 0.3) {
+                        const numNotes = 1 + Math.floor(Math.random() * 3);
+                        for(let k=0; k<numNotes; k++) {
+                            const nAngle = tAngle + (Math.random() - 0.5); const nDist = tDist + 80;
+                            const note = createNodeData(`topic-${j}-note-${k}`, topic.id, 'note', `Note ${k+1}`, ``, deptColor, Math.cos(nAngle) * nDist, Math.sin(nAngle) * nDist);
+                            if (Math.random() > 0.8) note.needsHelp = true;
 
-                                const now = new Date();
-                                note.startDate = new Date(now.getTime() - Math.random()*10*86400000).toISOString().split('T')[0];
-                                note.endDate = new Date(now.getTime() + Math.random()*15*86400000).toISOString().split('T')[0];
+                            const now = new Date();
+                            note.startDate = new Date(now.getTime() - Math.random()*10*86400000).toISOString().split('T')[0];
+                            note.endDate = new Date(now.getTime() + Math.random()*15*86400000).toISOString().split('T')[0];
 
-                                const tasksCount = 1 + Math.floor(Math.random() * 3);
-                                for (let t = 0; t < tasksCount; t++) {
-                                    let taskItem = {
-                                        id: Date.now() + t + k*10, text: `System sequence procedure ${t+1}`, done: Math.random() > 0.7,
-                                        lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }), lastModifiedBy: 'System',
-                                        comments: []
-                                    };
-                                    if (Math.random() > 0.5) taskItem.comments.push({ text: "Please review this step.", author: "System", time: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) });
-                                    note.taskList.push(taskItem);
-                                }
-                                nodeDerivedStatus(note);
-                                queueToBatch(note);
+                            const tasksCount = 1 + Math.floor(Math.random() * 3);
+                            for (let t = 0; t < tasksCount; t++) {
+                                let taskItem = {
+                                    id: Date.now() + t + k*10, text: `System sequence procedure ${t+1}`, done: Math.random() > 0.7,
+                                    lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }), lastModifiedBy: 'System',
+                                    comments: []
+                                };
+                                if (Math.random() > 0.5) taskItem.comments.push({ text: "Please review this step.", author: "System", time: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) });
+                                note.taskList.push(taskItem);
                             }
+                            nodeDerivedStatus(note);
+                            queueNode(note);
                         }
                     }
                 }
-                await batch.commit();
+            }
+            if (!isLocal) await batch.commit();
+            else { rebuildEdges(); updateHelpList(); }
+        }
+
+        async function seedDatabaseIfEmpty() {
+            const snap = await getDocs(nodesCollection);
+            if (snap.empty) {
+                logAction('SYSTEM', 'Database empty. Constructing initial cloud topology...');
+                await generateInitialTopology(false);
                 logAction('SYSTEM', 'Initial topology uploaded to cloud.');
             } else {
                 logAction('SYSTEM', 'Neural Network synced from cloud database.');
@@ -1348,31 +1399,75 @@
             document.getElementById('edit-profile-dept').value = document.getElementById('profile-dept').textContent;
             document.getElementById('profile-modal').style.display = 'flex';
         });
+        
         document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
-            e.preventDefault(); const newName = document.getElementById('edit-profile-name').value.trim(); const newDept = document.getElementById('edit-profile-dept').value;
-            if (newName) { document.getElementById('profile-name').textContent = newName; document.getElementById('profile-avatar').textContent = newName.charAt(0).toUpperCase(); }
-            document.getElementById('profile-dept').textContent = newDept; logAction('PROFILE', `Identity updated: ${newName} [${newDept}]`); document.getElementById('profile-modal').style.display = 'none';
+            e.preventDefault();
+            const newName = document.getElementById('edit-profile-name').value.trim();
+            const newDept = document.getElementById('edit-profile-dept').value;
+            if (newName) {
+                document.getElementById('profile-name').textContent = newName;
+                document.getElementById('profile-avatar').textContent = newName.charAt(0).toUpperCase();
+            }
+            document.getElementById('profile-dept').textContent = newDept;
+            logAction('PROFILE', `Identity updated: ${newName} [${newDept}]`);
+            document.getElementById('profile-modal').style.display = 'none';
         });
 
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                logAction('SYSTEM', 'Severing link to the neural collective...');
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Disconnect error", error);
+                }
+                setTimeout(() => window.location.reload(), 600);
+            });
+        }
+
+        // --- CONTEXT MENU (ADD / EDIT) ---
         ctxAddBtn.addEventListener('click', () => {
             if(!selectedNode) return;
             document.getElementById('add-name').value = ''; document.getElementById('add-desc').value = '';
-            document.getElementById('add-start-date').value = ''; document.getElementById('add-end-date').value = ''; document.getElementById('add-help-checkbox').checked = false;
-            const t = document.getElementById('add-modal-title'); const d = document.getElementById('add-desc'); const h = document.getElementById('add-help-container'); const dates = document.getElementById('add-dates-container');
+            document.getElementById('add-start-date').value = ''; document.getElementById('add-end-date').value = '';
+            document.getElementById('add-help-checkbox').checked = false;
+            
+            const t = document.getElementById('add-modal-title'); const d = document.getElementById('add-desc');
+            const h = document.getElementById('add-help-container'); const dates = document.getElementById('add-dates-container');
+            
             if(selectedNode.type === 'core') { t.textContent = 'NEW CLUSTER'; d.classList.add('hidden'); h.classList.add('hidden'); dates.classList.add('hidden'); }
             else if(selectedNode.type === 'dept') { t.textContent = 'NEW TOPIC'; d.classList.remove('hidden'); h.classList.add('hidden'); dates.classList.add('hidden'); }
             else { t.textContent = 'NEW NOTE'; d.classList.add('hidden'); h.classList.remove('hidden'); dates.classList.remove('hidden'); }
+            
             document.getElementById('add-modal').style.display = 'flex';
         });
 
         document.getElementById('add-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); if(!selectedNode) return;
-            const name = document.getElementById('add-name').value.trim(); const desc = document.getElementById('add-desc').value.trim();
+            e.preventDefault(); 
+            if(!selectedNode) return;
+            const name = document.getElementById('add-name').value.trim(); 
+            const desc = document.getElementById('add-desc').value.trim();
+            
             if(name) {
                 const type = selectedNode.type === 'core' ? 'dept' : (selectedNode.type === 'dept' ? 'topic' : 'note');
                 const color = selectedNode.type === 'core' ? colors[nodes.filter(n=>n.type==='dept').length % colors.length] : selectedNode.color;
                 
-                const nodeData = createNodeData(`${type}-${Date.now()}`, selectedNode.id, type, name, desc, color, selectedNode.x + 50, selectedNode.y + 50);
+                const nodeData = {
+                    id: `${type}-${Date.now()}`,
+                    parentId: selectedNode.id,
+                    type: type,
+                    name: name,
+                    description: desc,
+                    color: color,
+                    x: selectedNode.x + 50,
+                    y: selectedNode.y + 50,
+                    charge: type === 'core' ? -3000 : (type === 'dept' ? -1200 : -500),
+                    status: type === 'note' ? 'New' : null,
+                    startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
+                    createdBy: document.getElementById('profile-name').textContent || 'System',
+                    createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                };
+
                 if (type === 'note') { 
                     nodeData.needsHelp = document.getElementById('add-help-checkbox').checked; 
                     nodeData.startDate = document.getElementById('add-start-date').value; 
@@ -1382,7 +1477,6 @@
                 logAction('CREATE', `Node initialized: ${name}`);
                 document.getElementById('add-modal').style.display = 'none';
 
-                // Save to Cloud - The snapshot listener will pick this up and render it
                 await pushNodeToDB(nodeData);
             }
         });
@@ -1390,19 +1484,30 @@
         ctxEditBtn.addEventListener('click', () => {
             if(!selectedNode || selectedNode.type === 'core') return;
             document.getElementById('edit-node-name').value = selectedNode.name;
-            const sCont = document.getElementById('edit-status-container'); const hCont = document.getElementById('edit-help-container'); const dCont = document.getElementById('edit-dates-container'); const hCheck = document.getElementById('edit-help-checkbox');
+            const sCont = document.getElementById('edit-status-container'); 
+            const hCont = document.getElementById('edit-help-container'); 
+            const dCont = document.getElementById('edit-dates-container'); 
+            const hCheck = document.getElementById('edit-help-checkbox');
+            
             if (selectedNode.type === 'note') {
-                document.getElementById('edit-modal-title').textContent = 'UPDATE NOTE'; document.getElementById('edit-start-date').value = selectedNode.startDate || ''; document.getElementById('edit-end-date').value = selectedNode.endDate || ''; document.getElementById('edit-node-status').value = selectedNode.status;
+                document.getElementById('edit-modal-title').textContent = 'UPDATE NOTE'; 
+                document.getElementById('edit-start-date').value = selectedNode.startDate || ''; 
+                document.getElementById('edit-end-date').value = selectedNode.endDate || ''; 
+                document.getElementById('edit-node-status').value = selectedNode.status;
                 sCont.classList.remove('hidden'); hCont.classList.remove('hidden'); dCont.classList.remove('hidden');
-                if (selectedNode.status === 'Done') { hCheck.checked = false; hCheck.disabled = true; } else { hCheck.disabled = false; hCheck.checked = selectedNode.needsHelp; }
+                
+                if (selectedNode.status === 'Done') { hCheck.checked = false; hCheck.disabled = true; } 
+                else { hCheck.disabled = false; hCheck.checked = selectedNode.needsHelp; }
             } else {
-                document.getElementById('edit-modal-title').textContent = 'RENAME NODE'; sCont.classList.add('hidden'); hCont.classList.add('hidden'); dCont.classList.add('hidden');
+                document.getElementById('edit-modal-title').textContent = 'RENAME NODE'; 
+                sCont.classList.add('hidden'); hCont.classList.add('hidden'); dCont.classList.add('hidden');
             }
             document.getElementById('edit-modal').style.display = 'flex';
         });
 
         document.getElementById('edit-node-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); if(!selectedNode) return;
+            e.preventDefault(); 
+            if(!selectedNode) return;
             
             const newName = document.getElementById('edit-node-name').value.trim(); 
             if(selectedNode.name !== newName) logAction('EDIT', `Renamed "${selectedNode.name}" to "${newName}"`);
@@ -1416,14 +1521,20 @@
             }
             
             document.getElementById('edit-modal').style.display = 'none';
-            // Save to Cloud
             await updateNodeInDB(selectedNode.id, updates);
         });
 
         // --- ARCHIVE LOGIC ---
         async function setArchiveStatusDB(nodeId, status) {
+            if (isTestMode) {
+                const node = nodes.find(n => n.id === nodeId); 
+                if (node) node.isArchived = status;
+                const children = nodes.filter(n => n.parentId === nodeId);
+                for(let child of children) { await setArchiveStatusDB(child.id, status); }
+                rebuildEdges();
+                return;
+            }
             const node = nodes.find(n => n.id === nodeId); if (!node) return;
-            // Recursively update db
             await updateNodeInDB(nodeId, { isArchived: status });
             const children = nodes.filter(n => n.parentId === nodeId);
             for(let child of children) { await setArchiveStatusDB(child.id, status); }
@@ -1442,9 +1553,16 @@
             await setArchiveStatusDB(idToArchive, true);
         });
 
-        const archiveGrid = document.getElementById('archive-grid'); const breadcrumbsContainer = document.getElementById('directory-breadcrumbs');
+        const archiveGrid = document.getElementById('archive-grid'); 
+        const breadcrumbsContainer = document.getElementById('directory-breadcrumbs');
         let currentArchiveDirectoryId = 'core';
-        ctxListBtn.addEventListener('click', () => { currentArchiveDirectoryId = 'core'; populateArchiveModal(); document.getElementById('archive-modal').style.display = 'flex'; contextMenu.style.display = 'none'; });
+        
+        ctxListBtn.addEventListener('click', () => { 
+            currentArchiveDirectoryId = 'core'; 
+            populateArchiveModal(); 
+            document.getElementById('archive-modal').style.display = 'flex'; 
+            contextMenu.style.display = 'none'; 
+        });
 
         function buildBreadcrumbs(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
@@ -1488,7 +1606,6 @@
                 logAction('ARCHIVE', `Node "${nodes.find(n=>n.id===id).name}" RESTORED`);
                 await setArchiveStatusDB(id, false); 
                 
-                // Recursively fix parents
                 let current = nodes.find(n => n.id === id);
                 while (current.parentId) { 
                     const parent = nodes.find(n => n.id === current.parentId); 
@@ -1501,7 +1618,7 @@
             }
         });
 
-        // --- LOGS ---
+        // --- LOGS & HELP WIDGET ---
         document.getElementById('toggle-logs-btn').addEventListener('click', () => {
             logsWidget.classList.toggle('expanded');
             if (logsWidget.classList.contains('expanded')) {
@@ -1510,6 +1627,7 @@
                 if (actPanel) actPanel.scrollTop = actPanel.scrollHeight; 
             }
         });
+        
         function handleTabSwitch(e) {
             if (!logsWidget.classList.contains('expanded')) logsWidget.classList.add('expanded');
             const tabBtn = e.currentTarget;
@@ -1522,7 +1640,8 @@
                 if (targetPanel) targetPanel.scrollTop = targetPanel.scrollHeight;
             }
         }
-        document.getElementById('tab-sys-btn').addEventListener('click', handleTabSwitch); document.getElementById('tab-help-btn').addEventListener('click', handleTabSwitch);
+        document.getElementById('tab-sys-btn').addEventListener('click', handleTabSwitch); 
+        document.getElementById('tab-help-btn').addEventListener('click', handleTabSwitch);
 
         function logAction(tag, message) {
             const entry = document.createElement('div'); entry.className = 'log-entry';
@@ -1545,43 +1664,79 @@
         }
 
         // --- LAUNCH & SYNC ---
-        googleLoginBtn.addEventListener('click', () => { authModal.style.display = 'flex'; authEmailInput.focus(); });
-        
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            const email = authEmailInput.value.trim(); if (!email) return; 
-            const domain = email.split('@')[1];
+        const googleProvider = new GoogleAuthProvider();
+
+        testModeBtn.addEventListener('click', () => {
+            isTestMode = true;
+            document.getElementById('profile-name').textContent = "Test User";
+            document.getElementById('profile-avatar').textContent = "T";
+            document.getElementById('profile-dept').textContent = "Simulation";
             
-            if (domain === 'inventi.ph' || domain === 'inventi.asia') {
-                loginError.classList.add('hidden'); authModal.style.display = 'none'; 
-                logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
-                
-                const nickname = email.split('@')[0]; 
-                document.getElementById('profile-name').textContent = nickname; 
-                document.getElementById('profile-avatar').textContent = nickname.charAt(0).toUpperCase();
+            logAction('SYSTEM', `Test Mode activated. Loading local mock topology...`);
+            generateInitialTopology(true);
+            
+            loginView.style.opacity = '0'; universeBg.style.opacity = '0';
+            setTimeout(() => {
+                loginView.style.display = 'none'; universeBg.style.display = 'none';
+                homeView.style.display = 'block'; homeView.style.opacity = '1'; homeView.style.pointerEvents = 'auto';
+                if(!isAppStarted) { isAppStarted = true; render(); }
+            }, 1000);
+        });
 
-                // 1. Authenticate with Firebase
-                await initAuth();
+        googleLoginBtn.addEventListener('click', async () => { 
+            try {
+                loginError.classList.add('hidden');
+                testModeBtn.classList.add('hidden');
                 
-                // 2. Start Live Snapshot Sync
-                startRealtimeSync();
+                // Important: Prompts user to select account if they have multiple
+                googleProvider.setCustomParameters({ prompt: 'select_account' });
+                
+                // Trigger native Firebase Google Auth Popup
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                const email = user.email || '';
+                const domain = email.split('@')[1];
 
-                // 3. Check for Seed Data
-                setTimeout(async () => {
-                    await seedDatabaseIfEmpty();
+                // Validate Domain Restrictions Post-Auth
+                if (domain === 'inventi.ph' || domain === 'inventi.asia') {
+                    userId = user.uid;
+                    logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
                     
-                    loginView.style.opacity = '0'; universeBg.style.opacity = '0';
-                    setTimeout(() => {
-                        loginView.style.display = 'none'; universeBg.style.display = 'none';
-                        homeView.style.display = 'block'; homeView.style.opacity = '1'; homeView.style.pointerEvents = 'auto';
-                        if(!isAppStarted) { isAppStarted = true; render(); }
-                    }, 1000);
-                }, 1000);
+                    const nickname = email.split('@')[0]; 
+                    document.getElementById('profile-name').textContent = nickname; 
+                    document.getElementById('profile-avatar').textContent = nickname.charAt(0).toUpperCase();
 
-            } else { 
-                authModal.style.display = 'none'; 
-                loginError.textContent = `ACCESS DENIED: Domain @${domain || 'unknown'} is unauthorized.`; 
+                    // 1. Start Live Snapshot Sync
+                    startRealtimeSync();
+
+                    // 2. Check for Seed Data
+                    setTimeout(async () => {
+                        await seedDatabaseIfEmpty();
+                        
+                        loginView.style.opacity = '0'; universeBg.style.opacity = '0';
+                        setTimeout(() => {
+                            loginView.style.display = 'none'; universeBg.style.display = 'none';
+                            homeView.style.display = 'block'; homeView.style.opacity = '1'; homeView.style.pointerEvents = 'auto';
+                            if(!isAppStarted) { isAppStarted = true; render(); }
+                        }, 1000);
+                    }, 1000);
+
+                } else { 
+                    // Domain does not match whitelist - immediately revoke access
+                    await signOut(auth);
+                    loginError.textContent = `ACCESS DENIED: Domain @${domain || 'unknown'} is unauthorized.`; 
+                    loginError.classList.remove('hidden'); 
+                    testModeBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                // Handle error gracefully without throwing console exceptions
+                if (error.code === 'auth/popup-closed-by-user') {
+                    loginError.textContent = `AUTHENTICATION CANCELLED.`;
+                } else {
+                    loginError.textContent = `AUTHENTICATION FAILED: ${error.message}`; 
+                }
                 loginError.classList.remove('hidden'); 
+                testModeBtn.classList.remove('hidden');
             }
         });
     </script>
