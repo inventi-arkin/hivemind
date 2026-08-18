@@ -358,6 +358,8 @@
                     <span>Hide Done</span>
                     <input type="checkbox" id="toggle-hide-done-checkbox" class="custom-checkbox">
                 </label>
+                <div class="w-full h-px bg-white/10 my-1"></div>
+                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
             </div>
 
             <!-- Profile -->
@@ -805,6 +807,7 @@
 
                             if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status) {
                                 createWebGLNode(node); // Refreshes visuals (red flags, aura)
+                                edgesNeedRebuild = true;
                             }
                             if (oldArchived !== node.isArchived) { edgesNeedRebuild = true; }
 
@@ -924,11 +927,13 @@
 
         // --- CORE LOGIC ---
         function isHiddenNode(node) { return (hideDoneNodes && node.status === 'Done') || node.isArchived; }
+        
         function getNodePath(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
             while (current) { path.unshift(current.name); current = nodes.find(n => n.id === current.parentId); }
             return path.join(' / ');
         }
+        
         function panToNode(node) {
             targetCameraPos = new THREE.Vector3(node.x, node.y, Math.max(800, camera.position.z));
             selectedNode = node; updateContextMenu();
@@ -936,6 +941,9 @@
 
         function nodeDerivedStatus(node) {
             if (node.type !== 'note') return;
+            const oldStatus = node.status;
+            const oldNeedsHelp = node.needsHelp;
+
             if (node.taskList.length === 0) { node.status = 'New'; } 
             else {
                 const doneCount = node.taskList.filter(t => t.done).length;
@@ -944,6 +952,11 @@
                 else node.status = 'In-Progress';
             }
             if (node.status === 'Done' && node.needsHelp) { node.needsHelp = false; }
+            
+            // immediately reflect in view modal
+            if (selectedNode && selectedNode.id === node.id && document.getElementById('view-modal').style.display === 'flex') {
+                updateViewModalStatusDisplay(node);
+            }
         }
 
         function updateViewModalStatusDisplay(node) {
@@ -960,6 +973,51 @@
             else { helpBanner.classList.add('hidden'); helpBanner.classList.remove('flex'); }
         }
 
+        function rearrangeNetwork() {
+            logAction('SYSTEM', 'Initiating neural network realignment...');
+            const core = nodes.find(n => n.type === 'core');
+            if (core) {
+                core.x = 0; core.y = 0; core.vx = 0; core.vy = 0;
+            }
+
+            const depts = nodes.filter(n => n.type === 'dept');
+            depts.forEach((dept, i) => {
+                const angle = (Math.PI * 2 / depts.length) * i;
+                const distance = 400;
+                dept.x = Math.cos(angle) * distance;
+                dept.y = Math.sin(angle) * distance;
+                dept.vx = 0; dept.vy = 0;
+
+                const topics = nodes.filter(n => n.parentId === dept.id);
+                topics.forEach((topic, j) => {
+                    const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.4);
+                    const tDist = distance + 180;
+                    topic.x = Math.cos(tAngle) * tDist;
+                    topic.y = Math.sin(tAngle) * tDist;
+                    topic.vx = 0; topic.vy = 0;
+
+                    const childNotes = nodes.filter(n => n.parentId === topic.id);
+                    childNotes.forEach((note, k) => {
+                        const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.3);
+                        const nDist = tDist + 100;
+                        note.x = Math.cos(nAngle) * nDist;
+                        note.y = Math.sin(nAngle) * nDist;
+                        note.vx = 0; note.vy = 0;
+                    });
+                });
+            });
+
+            nodes.forEach(node => {
+                if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0);
+            });
+            rebuildEdges();
+        }
+
+        document.getElementById('rearrange-btn').addEventListener('click', () => {
+            rearrangeNetwork();
+            viewOptionsMenu.style.display = 'none';
+        });
+
         // --- TASK & CHAT RENDERERS ---
         function renderTaskList() {
             const container = document.getElementById('task-list-container'); container.innerHTML = '';
@@ -974,12 +1032,17 @@
                 checkbox.addEventListener('change', async () => {
                     task.done = checkbox.checked;
                     task.lastModified = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-                    task.lastModifiedBy = document.getElementById('profile-name').textContent;
+                    task.lastModifiedBy = document.getElementById('profile-name').textContent || 'System';
                     
                     // Optimistic UI update
                     nodeDerivedStatus(selectedNode); 
                     renderTaskList();
                     
+                    // Force WebGL updates immediately
+                    createWebGLNode(selectedNode); 
+                    rebuildEdges();
+                    updateHelpList();
+
                     // Push to Cloud
                     await updateNodeInDB(selectedNode.id, {
                         taskList: selectedNode.taskList,
@@ -1007,6 +1070,12 @@
                     delBtn.addEventListener('click', async () => {
                         selectedNode.taskList = selectedNode.taskList.filter(t => t.id !== task.id);
                         nodeDerivedStatus(selectedNode); renderTaskList();
+                        
+                        // Force WebGL updates immediately
+                        createWebGLNode(selectedNode); 
+                        rebuildEdges();
+                        updateHelpList();
+
                         await updateNodeInDB(selectedNode.id, { taskList: selectedNode.taskList, status: selectedNode.status, needsHelp: selectedNode.needsHelp });
                     });
                     actionsContainer.appendChild(delBtn);
@@ -1069,12 +1138,12 @@
                 if (!currentActiveTask.comments) currentActiveTask.comments = [];
                 currentActiveTask.comments.push({
                     text: text,
-                    author: document.getElementById('profile-name').textContent,
+                    author: document.getElementById('profile-name').textContent || 'System',
                     time: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
                 });
                 
                 currentActiveTask.lastModified = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-                currentActiveTask.lastModifiedBy = document.getElementById('profile-name').textContent;
+                currentActiveTask.lastModifiedBy = document.getElementById('profile-name').textContent || 'System';
                 
                 input.value = ''; renderChatMessages(); renderTaskList();
                 logAction('EDIT', `Posted comment to task in "${selectedNode.name}"`);
@@ -1166,7 +1235,7 @@
             return {
                 id, parentId, type, name, description, color, x, y, charge,
                 status: type === 'note' ? 'New' : null, startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
-                createdBy: document.getElementById('profile-name').textContent || 'System', 
+                createdBy: document.getElementById('profile-name') ? (document.getElementById('profile-name').textContent || 'System') : 'System', 
                 createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
             };
         }
@@ -1363,13 +1432,18 @@
                 selectedNode.taskList.push({ 
                     id: Date.now(), text: text, done: false,
                     lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
-                    lastModifiedBy: document.getElementById('profile-name').textContent, comments: []
+                    lastModifiedBy: document.getElementById('profile-name').textContent || 'System', comments: []
                 });
                 input.value = ''; 
                 nodeDerivedStatus(selectedNode); 
                 renderTaskList(); 
                 logAction('EDIT', `Added task to "${selectedNode.name}"`);
                 
+                // Force WebGL updates immediately
+                createWebGLNode(selectedNode); 
+                rebuildEdges();
+                updateHelpList();
+
                 // Save to Cloud
                 await updateNodeInDB(selectedNode.id, {
                     taskList: selectedNode.taskList,
