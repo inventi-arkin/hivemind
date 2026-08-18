@@ -1402,14 +1402,30 @@
 
         // --- FORMS & ACTIONS ---
         const deptSelect = document.getElementById('edit-profile-dept');
-        departmentNames.forEach(dept => { const opt = document.createElement('option'); opt.value = dept; opt.textContent = dept; deptSelect.appendChild(opt); });
         
         document.getElementById('profile-widget').addEventListener('click', () => {
+            // Dynamically populate department dropdown based on existing clusters
+            deptSelect.innerHTML = '<option value="Unassigned">Unassigned</option>';
+            const existingDepts = [...new Set(nodes.filter(n => n.type === 'dept' && !n.isArchived).map(n => n.name))].sort();
+            existingDepts.forEach(deptName => { 
+                const opt = document.createElement('option'); 
+                opt.value = deptName; 
+                opt.textContent = deptName; 
+                deptSelect.appendChild(opt); 
+            });
+
             document.getElementById('edit-profile-name').value = document.getElementById('profile-name').textContent;
-            document.getElementById('edit-profile-dept').value = document.getElementById('profile-dept').textContent;
+            
+            const currentDept = document.getElementById('profile-dept').textContent;
+            if (existingDepts.includes(currentDept) || currentDept === 'Unassigned') {
+                deptSelect.value = currentDept;
+            } else {
+                deptSelect.value = 'Unassigned';
+            }
+
             document.getElementById('profile-modal').style.display = 'flex';
         });
-        
+
         document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const newName = document.getElementById('edit-profile-name').value.trim();
