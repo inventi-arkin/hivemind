@@ -307,20 +307,7 @@
         </div>
     </div>
 
-    <!-- Custom Auth Modal -->
-    <div id="auth-modal" class="interactive fixed inset-0 z-[200] hidden items-center justify-center bg-black/80 backdrop-blur-md">
-        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center">
-            <h2 class="text-xl font-bold mb-4 tracking-[0.1em] text-white">GOOGLE AUTH</h2>
-            <p class="text-xs text-gray-300 mb-6">Simulation: Enter your workspace email.</p>
-            <form id="auth-form" class="space-y-4 text-left">
-                <input type="email" id="auth-email-input" placeholder="user@inventi.ph" class="glass-input w-full px-3 py-2 text-sm rounded-lg" required>
-                <div class="flex space-x-4 mt-6">
-                    <button type="button" onclick="document.getElementById('auth-modal').style.display='none'" class="glass-input w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CANCEL</button>
-                    <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CONTINUE</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <!-- Custom Auth Modal (REMOVED: Using direct Test Mode fallback) -->
 
     <div id="home-view">
         <!-- 3D Engine Output -->
@@ -359,7 +346,7 @@
                     <input type="checkbox" id="toggle-hide-done-checkbox" class="custom-checkbox">
                 </label>
                 <div class="w-full h-px bg-white/10 my-1"></div>
-                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
+                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ALIGN NETWORK</button>
             </div>
 
             <!-- Profile -->
@@ -639,9 +626,6 @@
         const googleLoginBtn = document.getElementById('google-login-btn');
         const loginError = document.getElementById('login-error');
         const testModeBtn = document.getElementById('test-mode-btn');
-        const authModal = document.getElementById('auth-modal');
-        const authForm = document.getElementById('auth-form');
-        const authEmailInput = document.getElementById('auth-email-input');
         const universeBg = document.getElementById('universe-bg');
         const homeView = document.getElementById('home-view');
         const container = document.getElementById('webgl-container');
@@ -750,7 +734,17 @@
 
         async function pushNodeToDB(nodeData) {
             if (isTestMode) {
-                const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                const safeType = nodeData.type || 'note';
+                const safeColor = nodeData.color || '#06b6d4';
+                const safeCharge = nodeData.charge !== undefined ? nodeData.charge : (safeType === 'core' ? -3000 : (safeType === 'dept' ? -1200 : -500));
+                const safeX = typeof nodeData.x === 'number' && !isNaN(nodeData.x) ? nodeData.x : (Math.random() - 0.5) * 500;
+                const safeY = typeof nodeData.y === 'number' && !isNaN(nodeData.y) ? nodeData.y : (Math.random() - 0.5) * 500;
+
+                const node = { 
+                    ...nodeData, 
+                    type: safeType, color: safeColor, charge: safeCharge, x: safeX, y: safeY,
+                    vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null 
+                };
                 nodes.push(node);
                 createWebGLNode(node);
                 rebuildEdges();
@@ -786,8 +780,18 @@
                     
                     if (change.type === 'added') {
                         if (!nodes.find(n => n.id === data.id)) {
-                            // Construct local physics node from DB data
-                            const node = { ...data, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                            // SANITIZATION LAYER: Ensure legacy prod data never infects physics engine with NaN/Undefined
+                            const safeType = data.type || 'note';
+                            const safeColor = data.color || '#06b6d4';
+                            const safeCharge = data.charge !== undefined ? data.charge : (safeType === 'core' ? -3000 : (safeType === 'dept' ? -1200 : -500));
+                            const safeX = typeof data.x === 'number' && !isNaN(data.x) ? data.x : (Math.random() - 0.5) * 500;
+                            const safeY = typeof data.y === 'number' && !isNaN(data.y) ? data.y : (Math.random() - 0.5) * 500;
+
+                            const node = { 
+                                ...data, 
+                                type: safeType, color: safeColor, charge: safeCharge, x: safeX, y: safeY,
+                                vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null 
+                            };
                             nodes.push(node);
                             createWebGLNode(node);
                             edgesNeedRebuild = true;
@@ -800,14 +804,17 @@
                             const oldStatus = node.status;
                             const oldArchived = node.isArchived;
 
-                            // Merge DB fields into local physics node
+                            // Merge DB fields into local physics node (with safety fallbacks)
                             node.name = data.name; node.description = data.description;
                             node.status = data.status; node.startDate = data.startDate; node.endDate = data.endDate;
                             node.taskList = data.taskList || []; node.needsHelp = data.needsHelp; node.isArchived = data.isArchived;
+                            
+                            // Safe fallbacks for updates
+                            node.color = data.color || node.color || '#06b6d4';
+                            node.charge = data.charge !== undefined ? data.charge : (node.charge !== undefined ? node.charge : (node.type === 'core' ? -3000 : (node.type === 'dept' ? -1200 : -500)));
 
                             if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status) {
                                 createWebGLNode(node); // Refreshes visuals (red flags, aura)
-                                edgesNeedRebuild = true;
                             }
                             if (oldArchived !== node.isArchived) { edgesNeedRebuild = true; }
 
@@ -822,6 +829,17 @@
                                     if (updatedTask) { currentActiveTask = updatedTask; renderChatMessages(); }
                                 }
                             }
+                        }
+                    }
+                    else if (change.type === 'removed') {
+                        // Handle hard deletions from the database to eradicate ghost nodes
+                        const nodeIndex = nodes.findIndex(n => n.id === data.id);
+                        if (nodeIndex > -1) {
+                            const node = nodes[nodeIndex];
+                            if(node.threeGroup) scene.remove(node.threeGroup);
+                            if(node.htmlLabel) node.htmlLabel.remove();
+                            nodes.splice(nodeIndex, 1);
+                            edgesNeedRebuild = true;
                         }
                     }
                 });
@@ -926,14 +944,26 @@
         }
 
         // --- CORE LOGIC ---
-        function isHiddenNode(node) { return (hideDoneNodes && node.status === 'Done') || node.isArchived; }
-        
+        function isHiddenNode(node) { 
+            if (!node) return true;
+            if (node.isArchived) return true;
+            if (hideDoneNodes && node.status === 'Done') return true;
+            
+            // Deep Ancestry Check (Eradicates Ghost Nodes if a parent is archived)
+            let curr = nodes.find(n => n.id === node.parentId);
+            while (curr) {
+                if (curr.isArchived) return true;
+                curr = nodes.find(n => n.id === curr.parentId);
+            }
+            return false;
+        }
+
         function getNodePath(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
             while (current) { path.unshift(current.name); current = nodes.find(n => n.id === current.parentId); }
             return path.join(' / ');
         }
-        
+
         function panToNode(node) {
             targetCameraPos = new THREE.Vector3(node.x, node.y, Math.max(800, camera.position.z));
             selectedNode = node; updateContextMenu();
@@ -941,9 +971,6 @@
 
         function nodeDerivedStatus(node) {
             if (node.type !== 'note') return;
-            const oldStatus = node.status;
-            const oldNeedsHelp = node.needsHelp;
-
             if (node.taskList.length === 0) { node.status = 'New'; } 
             else {
                 const doneCount = node.taskList.filter(t => t.done).length;
@@ -952,11 +979,6 @@
                 else node.status = 'In-Progress';
             }
             if (node.status === 'Done' && node.needsHelp) { node.needsHelp = false; }
-            
-            // immediately reflect in view modal
-            if (selectedNode && selectedNode.id === node.id && document.getElementById('view-modal').style.display === 'flex') {
-                updateViewModalStatusDisplay(node);
-            }
         }
 
         function updateViewModalStatusDisplay(node) {
@@ -980,7 +1002,8 @@
                 core.x = 0; core.y = 0; core.vx = 0; core.vy = 0;
             }
 
-            const depts = nodes.filter(n => n.type === 'dept');
+            // Universal Orbit Engine (No longer restricted by string names)
+            const depts = nodes.filter(n => n.parentId === (core ? core.id : null));
             depts.forEach((dept, i) => {
                 const angle = (Math.PI * 2 / depts.length) * i;
                 const distance = 400;
@@ -1007,13 +1030,17 @@
                 });
             });
 
-            // 1. Move them visually
+            // Handle orphans (nodes that bypass the normal structure)
             nodes.forEach(node => {
+                if (node.type !== 'core' && node.parentId === null) {
+                    node.x = (Math.random() - 0.5) * 4000;
+                    node.y = (Math.random() - 0.5) * 4000;
+                }
                 if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0);
             });
             rebuildEdges();
 
-            // 2. Save new coordinates to Firebase
+            // Save new coordinates to Firebase Batch
             if (!isTestMode && userId) {
                 const batch = writeBatch(db);
                 nodes.forEach(node => {
@@ -1169,9 +1196,22 @@
 
         // --- WEBGL DATA MANAGEMENT ---
         function createWebGLNode(node) {
-            if(node.threeGroup) scene.remove(node.threeGroup); if(node.htmlLabel) node.htmlLabel.remove();
+            // Memory cleanup for ghost nodes
+            if(node.threeGroup) {
+                node.threeGroup.children.forEach(child => {
+                    if (child.material) child.material.dispose();
+                    if (child.geometry) child.geometry.dispose();
+                });
+                scene.remove(node.threeGroup);
+            }
+            if(node.htmlLabel) node.htmlLabel.remove();
+
             const group = new THREE.Group(); const radius = node.type === 'core' ? 30 : (node.type === 'dept' ? 18 : 9);
-            const renderColor = (node.needsHelp && node.status !== 'Done') ? '#ef4444' : node.color; const rColorObj = new THREE.Color(renderColor);
+            
+            // Safe fallback color logic
+            const safeColor = node.color || '#06b6d4';
+            const renderColor = (node.needsHelp && node.status !== 'Done') ? '#ef4444' : safeColor; 
+            const rColorObj = new THREE.Color(renderColor);
 
             const coreMat = new THREE.SpriteMaterial({ map: sharedCoreTexture, color: 0xffffff, blending: THREE.NormalBlending, depthWrite: false });
             const coreSprite = new THREE.Sprite(coreMat); const solidScale = node.type === 'core' ? radius * 2.2 : radius * 1.5;
@@ -1234,7 +1274,7 @@
             const boxDiv = document.createElement('div'); boxDiv.className = 'node-label-box';
             if (node.needsHelp && node.status !== 'Done') boxDiv.classList.add('needs-help');
             
-            const textSpan = document.createElement('span'); textSpan.className = 'node-name'; textSpan.innerText = node.name.toUpperCase(); boxDiv.appendChild(textSpan);
+            const textSpan = document.createElement('span'); textSpan.className = 'node-name'; textSpan.innerText = (node.name || 'UNKNOWN').toUpperCase(); boxDiv.appendChild(textSpan);
             if (node.status) {
                 const statusSpan = document.createElement('span'); statusSpan.className = 'status-badge ' + (node.status === 'New' ? 'status-new' : (node.status === 'In-Progress' ? 'status-progress' : 'status-done'));
                 statusSpan.innerText = node.status; boxDiv.appendChild(statusSpan);
@@ -1261,7 +1301,8 @@
 
             edges.forEach(edge => {
                 if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
-                const rColor = (edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : edge.target.color;
+                const safeColor = edge.target.color || '#06b6d4';
+                const rColor = (edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : safeColor;
                 const c = new THREE.Color(rColor);
                 for(let i=0; i<POINTS; i++) { positions.push(0,0,0); colors.push(c.r, c.g, c.b); }
             });
@@ -1310,7 +1351,8 @@
                     if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
                     const dx = edge.target.x - edge.source.x, dy = edge.target.y - edge.source.y, dist = Math.hypot(dx, dy);
                     const nx = dist === 0 ? 0 : -dy / dist; const ny = dist === 0 ? 0 : dx / dist;  
-                    const baseColor = new THREE.Color((edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : edge.target.color);
+                    const safeColor = edge.target.color || '#06b6d4';
+                    const baseColor = new THREE.Color((edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : safeColor);
                     
                     for(let i=0; i<POINTS; i++) {
                         const t = i / (POINTS - 1);
@@ -1335,8 +1377,8 @@
                 if (isHiddenNode(node)) { if(node.threeGroup) node.threeGroup.visible = false; if(node.htmlLabel) node.htmlLabel.classList.add('hidden'); return; }
                 if(node.threeGroup) node.threeGroup.visible = true;
                 if (node.dustRef) node.dustRef.rotation.z -= (node.type === 'core' ? 0.0005 : 0.0015);
-                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.7 + Math.sin(time * 2 + node.x) * 0.15;
-                if (node.htmlLabel) {
+                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.7 + Math.sin(time * 2 + (node.x || 0)) * 0.15;
+                if (node.htmlLabel && typeof node.x === 'number' && typeof node.y === 'number') {
                     tempV.set(node.x, node.y, 0).project(camera);
                     const screenX = (tempV.x * .5 + .5) * window.innerWidth; const screenY = (tempV.y * -.5 + .5) * window.innerHeight;
                     const dist = camera.position.distanceTo(new THREE.Vector3(node.x, node.y, 0));
@@ -1401,6 +1443,7 @@
         }
         function updateContextMenuPos() {
             if (!selectedNode || contextMenu.style.display === 'none') return;
+            if (typeof selectedNode.x !== 'number' || typeof selectedNode.y !== 'number') return;
             const tempV = new THREE.Vector3().set(selectedNode.x, selectedNode.y, 0).project(camera);
             const dist = camera.position.distanceTo(new THREE.Vector3(selectedNode.x, selectedNode.y, 0));
             const scale = Math.max(0.3, Math.min(1.0, 1000 / dist));
@@ -1447,13 +1490,18 @@
                 selectedNode.taskList.push({ 
                     id: Date.now(), text: text, done: false,
                     lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
-                    lastModifiedBy: document.getElementById('profile-name').textContent, comments: []
+                    lastModifiedBy: document.getElementById('profile-name').textContent || 'System', comments: []
                 });
                 input.value = ''; 
                 nodeDerivedStatus(selectedNode); 
                 renderTaskList(); 
                 logAction('EDIT', `Added task to "${selectedNode.name}"`);
                 
+                // Force WebGL updates immediately
+                createWebGLNode(selectedNode); 
+                rebuildEdges();
+                updateHelpList();
+
                 // Save to Cloud
                 await updateNodeInDB(selectedNode.id, {
                     taskList: selectedNode.taskList,
