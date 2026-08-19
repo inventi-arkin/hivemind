@@ -258,17 +258,18 @@
         .node-name { 
             color: rgba(255, 255, 255, 0.9); 
             text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-            max-width: 120px; 
+            max-width: 85px; 
             overflow: hidden; 
             text-overflow: ellipsis; 
             white-space: nowrap; 
-            display: inline-block; 
+            display: inline-block;
+            vertical-align: middle;
         }
         .dept-font .node-name { font: bold 12px 'Inter', sans-serif; }
         .topic-font .node-name { font: 600 10px 'Inter', sans-serif; }
         .note-font .node-name { font: 400 9px 'Inter', sans-serif; }
         
-        .status-badge { font: bold 7px 'Inter', sans-serif; text-transform: uppercase; padding: 1px 4px; border-radius: 4px; border: 1px solid; }
+        .status-badge { font: bold 7px 'Inter', sans-serif; text-transform: uppercase; padding: 1px 4px; border-radius: 4px; border: 1px solid; vertical-align: middle; }
         .status-new { background: rgba(156, 163, 175, 0.2); border-color: rgba(156, 163, 175, 0.4); color: #e5e7eb; }
         .status-progress { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
         .status-done { background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
@@ -647,9 +648,6 @@
         const googleLoginBtn = document.getElementById('google-login-btn');
         const loginError = document.getElementById('login-error');
         const testModeBtn = document.getElementById('test-mode-btn');
-        const authModal = document.getElementById('auth-modal');
-        const authForm = document.getElementById('auth-form');
-        const authEmailInput = document.getElementById('auth-email-input');
         const universeBg = document.getElementById('universe-bg');
         const homeView = document.getElementById('home-view');
         const container = document.getElementById('webgl-container');
@@ -722,19 +720,37 @@
         const sharedCoreTexture = createCoreTexture();
         const sharedParticleTexture = createParticleTexture();
 
-        // Stars
-        const starGeo = new THREE.BufferGeometry(); const starCount = 3000;
-        const starPos = new Float32Array(starCount * 3); const starColors = new Float32Array(starCount * 3);
+        // Warp Speed Stars with Trailing Tails
+        const starCount = 1500; 
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 6); // Start and end points for lines
+        const starColors = new Float32Array(starCount * 6);
+        const starVels = new Float32Array(starCount); // Store individual speeds
+
         for (let i = 0; i < starCount; i++) {
-            let r = 800 + Math.random() * 4000;
-            const theta = Math.random() * Math.PI * 2; const phi = Math.acos((Math.random() * 2) - 1);
-            starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta); starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta); starPos[i * 3 + 2] = r * Math.cos(phi) - 1000; 
+            let x = (Math.random() - 0.5) * 4000;
+            let y = (Math.random() - 0.5) * 4000;
+            let z = (Math.random() - 0.5) * 4000;
+            let trailLength = 15 + Math.random() * 60; // Length of the light streak
+            let speed = 4 + Math.random() * 12; // Forward velocity
+            
+            starPos[i*6] = x; starPos[i*6+1] = y; starPos[i*6+2] = z; // Head
+            starPos[i*6+3] = x; starPos[i*6+4] = y; starPos[i*6+5] = z - trailLength; // Tail
+            
+            starVels[i] = speed;
+
             const cType = Math.random(); let c = new THREE.Color(0xffffff);
             if (cType > 0.9) c.setHex(0x06b6d4); else if (cType > 0.8) c.setHex(0xec4899); else if (cType > 0.6) c.setHex(0xaaaaaa); 
-            starColors[i*3] = c.r; starColors[i*3+1] = c.g; starColors[i*3+2] = c.b;
+            
+            // Bright head color
+            starColors[i*6] = c.r; starColors[i*6+1] = c.g; starColors[i*6+2] = c.b;
+            // Faded tail color (10% opacity equivalent via color mixing)
+            starColors[i*6+3] = c.r * 0.1; starColors[i*6+4] = c.g * 0.1; starColors[i*6+5] = c.b * 0.1;
         }
-        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3)); starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-        backgroundGroup.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })));
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3)); 
+        starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        const warpStars = new THREE.LineSegments(starGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending }));
+        backgroundGroup.add(warpStars);
 
         // --- FIREBASE DATA & SYNC ENGINE ---
         async function initAuth() {
@@ -756,9 +772,24 @@
             }
         }
 
+        // Sanitize database nodes to prevent NaN Infection (Disappearing nodes)
+        function sanitizeNode(data) {
+            const chargeMap = { 'core': -3000, 'dept': -1200, 'topic': -500, 'note': -500 };
+            return {
+                ...data,
+                x: typeof data.x === 'number' && !isNaN(data.x) ? data.x : (Math.random() * 200 - 100),
+                y: typeof data.y === 'number' && !isNaN(data.y) ? data.y : (Math.random() * 200 - 100),
+                vx: 0, vy: 0,
+                charge: typeof data.charge === 'number' && !isNaN(data.charge) ? data.charge : (chargeMap[data.type] || -500),
+                color: data.color || '#06b6d4',
+                spawnProgress: data.spawnProgress !== undefined ? data.spawnProgress : 0.0,
+                threeGroup: null, htmlLabel: null, dustRef: null
+            };
+        }
+
         async function pushNodeToDB(nodeData) {
             if (isTestMode) {
-                const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                const node = sanitizeNode(nodeData);
                 nodes.push(node);
                 createWebGLNode(node);
                 rebuildEdges();
@@ -766,7 +797,7 @@
             }
             if (!userId) return;
             const cleanData = { ...nodeData };
-            delete cleanData.threeGroup; delete cleanData.htmlLabel; delete cleanData.dustRef; delete cleanData.vx; delete cleanData.vy;
+            delete cleanData.threeGroup; delete cleanData.htmlLabel; delete cleanData.dustRef; delete cleanData.vx; delete cleanData.vy; delete cleanData.spawnProgress;
             try { await setDoc(doc(nodesCollection, nodeData.id), cleanData); } catch(e) { console.error("Error saving node", e); }
         }
 
@@ -794,8 +825,8 @@
                     
                     if (change.type === 'added') {
                         if (!nodes.find(n => n.id === data.id)) {
-                            // Construct local physics node from DB data
-                            const node = { ...data, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                            // Construct safely sanitized local physics node from DB data
+                            const node = sanitizeNode(data);
                             nodes.push(node);
                             createWebGLNode(node);
                             edgesNeedRebuild = true;
@@ -815,6 +846,7 @@
 
                             if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status) {
                                 createWebGLNode(node); // Refreshes visuals (red flags, aura)
+                                edgesNeedRebuild = true;
                             }
                             if (oldArchived !== node.isArchived) { edgesNeedRebuild = true; }
 
@@ -857,12 +889,15 @@
             
             function queueNode(nodeData) {
                 if (isLocal) {
-                    const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                    // Prevent duplicate injections if initialized rapidly multiple times
+                    if (nodes.some(n => n.id === nodeData.id)) return;
+                    
+                    const node = sanitizeNode(nodeData);
                     nodes.push(node);
                     createWebGLNode(node);
                 } else {
                     const clean = { ...nodeData };
-                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
+                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy; delete clean.spawnProgress;
                     batch.set(doc(nodesCollection, nodeData.id), clean);
                 }
             }
@@ -872,12 +907,15 @@
             for (let i = 0; i < departmentNames.length; i++) {
                 const angle = (Math.PI * 2 / departmentNames.length) * i; const distance = 400 + Math.random() * 100; const deptColor = colors[i % colors.length];
                 const dept = createNodeData(`dept-${i}`, core.id, 'dept', departmentNames[i], '', deptColor, Math.cos(angle) * distance, Math.sin(angle) * distance);
+                // Stagger spawn times based on distance
+                dept.spawnProgress = -Math.random() * 0.5;
                 queueNode(dept);
                 
                 const numTopics = 3 + Math.floor(Math.random() * 3);
                 for(let j = 0; j < numTopics; j++) {
                     const tAngle = angle + (Math.random() - 0.5); const tDist = distance + 150 + Math.random() * 80;
                     const topic = createNodeData(`dept-${i}-topic-${j}`, dept.id, 'topic', `Topic ${j+1}`, `Auto generated.`, deptColor, Math.cos(tAngle) * tDist, Math.sin(tAngle) * tDist);
+                    topic.spawnProgress = -Math.random() * 1.0;
                     queueNode(topic);
 
                     if(Math.random() > 0.3) {
@@ -902,6 +940,7 @@
                                 note.taskList.push(taskItem);
                             }
                             nodeDerivedStatus(note);
+                            note.spawnProgress = -Math.random() * 1.5;
                             queueNode(note);
                         }
                     }
@@ -921,7 +960,7 @@
                 const core = createNodeData('core', null, 'core', 'CORE', 'Central Neural Hub', '#06b6d4', 0, 0);
                 
                 const clean = { ...core };
-                delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
+                delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy; delete clean.spawnProgress;
                 
                 batch.set(doc(nodesCollection, core.id), clean);
                 await batch.commit();
@@ -933,12 +972,12 @@
         }
 
         // --- CORE LOGIC ---
-        function isHiddenNode(node) {
+        function isHiddenNode(node) { 
             if (!node) return true;
             if (hideDoneNodes && node.status === 'Done') return true;
             if (node.isArchived) return true;
             
-            // Deep Ancestry Check for Archived/Hidden Parents
+            // Check ancestry to prevent floating ghost notes of archived parents
             let current = nodes.find(n => n.id === node.parentId);
             while (current) {
                 if (current.isArchived) return true;
@@ -946,7 +985,7 @@
             }
             return false;
         }
-        
+
         function getNodePath(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
             while (current) { path.unshift(current.name); current = nodes.find(n => n.id === current.parentId); }
@@ -954,7 +993,7 @@
         }
         
         function panToNode(node) {
-            targetCameraPos = new THREE.Vector3(node.x, node.y, Math.max(800, camera.position.z));
+            targetCameraPos = new THREE.Vector3(node.x, node.y, 400); // Zoom closer
             selectedNode = node; updateContextMenu();
         }
 
@@ -999,7 +1038,7 @@
                 core.x = 0; core.y = 0; core.vx = 0; core.vy = 0;
             }
 
-            const depts = nodes.filter(n => n.type === 'dept' && !isHiddenNode(n));
+            const depts = nodes.filter(n => n.type === 'dept');
             depts.forEach((dept, i) => {
                 const angle = (Math.PI * 2 / depts.length) * i;
                 const distance = 400;
@@ -1007,7 +1046,7 @@
                 dept.y = Math.sin(angle) * distance;
                 dept.vx = 0; dept.vy = 0;
 
-                const topics = nodes.filter(n => n.parentId === dept.id && !isHiddenNode(n));
+                const topics = nodes.filter(n => n.parentId === dept.id);
                 topics.forEach((topic, j) => {
                     const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.4);
                     const tDist = distance + 180;
@@ -1015,7 +1054,7 @@
                     topic.y = Math.sin(tAngle) * tDist;
                     topic.vx = 0; topic.vy = 0;
 
-                    const childNotes = nodes.filter(n => n.parentId === topic.id && !isHiddenNode(n));
+                    const childNotes = nodes.filter(n => n.parentId === topic.id);
                     childNotes.forEach((note, k) => {
                         const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.3);
                         const nDist = tDist + 100;
@@ -1188,22 +1227,7 @@
 
         // --- WEBGL DATA MANAGEMENT ---
         function createWebGLNode(node) {
-            // Deep Purge to entirely kill GPU ghost nodes
-            if(node.threeGroup) {
-                node.threeGroup.children.forEach(c => {
-                    if(c.geometry) c.geometry.dispose();
-                    if(c.material) c.material.dispose();
-                    if(c.children) {
-                        c.children.forEach(cc => {
-                            if(cc.geometry) cc.geometry.dispose();
-                            if(cc.material) cc.material.dispose();
-                        });
-                    }
-                });
-                scene.remove(node.threeGroup);
-            }
-            if(node.htmlLabel) node.htmlLabel.remove();
-
+            if(node.threeGroup) scene.remove(node.threeGroup); if(node.htmlLabel) node.htmlLabel.remove();
             const group = new THREE.Group(); const radius = node.type === 'core' ? 30 : (node.type === 'dept' ? 18 : 9);
             const renderColor = (node.needsHelp && node.status !== 'Done') ? '#ef4444' : node.color; const rColorObj = new THREE.Color(renderColor);
 
@@ -1264,9 +1288,8 @@
             centerSprite.scale.set(centerScale, centerScale, 1); dustGroup.add(centerSprite);
             group.add(dustGroup); node.dustRef = dustGroup; group.position.set(node.x, node.y, 0); node.threeGroup = group; scene.add(group);
 
-            // Spawn progress setup
+            // Spawning Scale
             group.scale.set(0.001, 0.001, 0.001);
-            node.spawnProgress = 0.0;
 
             const labelDiv = document.createElement('div'); labelDiv.className = `node-label ${node.type}-font`;
             const boxDiv = document.createElement('div'); boxDiv.className = 'node-label-box';
@@ -1279,6 +1302,7 @@
             }
             const hBadge = document.createElement('span'); hBadge.className = 'help-badge-inline'; hBadge.innerText = '!'; boxDiv.appendChild(hBadge);
             
+            labelDiv.style.opacity = '0'; // Hide initially for spawn
             labelDiv.appendChild(boxDiv); labelsContainer.appendChild(labelDiv); node.htmlLabel = labelDiv;
         }
 
@@ -1288,7 +1312,8 @@
             return {
                 id, parentId, type, name, description, color, x, y, charge,
                 status: type === 'note' ? 'New' : null, startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
-                createdBy: document.getElementById('profile-name').textContent || 'System', 
+                spawnProgress: 0.0, // For new nodes
+                createdBy: document.getElementById('profile-name') ? (document.getElementById('profile-name').textContent || 'System') : 'System', 
                 createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
             };
         }
@@ -1335,9 +1360,32 @@
             const core = nodes.find(n => n.type === 'core'); if (core) { core.vx += (0 - core.x) * 0.08; core.vy += (0 - core.y) * 0.08; }
             nodes.forEach(node => { if (!isHiddenNode(node)) { node.vx *= 0.85; node.vy *= 0.85; node.x += node.vx; node.y += node.vy; if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0); } });
 
-            // Camera & BG
+            // Camera & Warp BG
             if (targetCameraPos) { camera.position.lerp(targetCameraPos, 0.08); if (camera.position.distanceTo(targetCameraPos) < 1) targetCameraPos = null; updateContextMenuPos(); }
-            if (backgroundGroup) { backgroundGroup.rotation.z = time * 0.015; backgroundGroup.rotation.y = Math.sin(time * 0.01) * 0.1; }
+            if (backgroundGroup) { backgroundGroup.rotation.z = time * 0.005; }
+            
+            // Animate Star Trails
+            if (warpStars) {
+                const sPos = warpStars.geometry.attributes.position.array;
+                for(let i=0; i<starCount; i++) {
+                    const speed = starVels[i];
+                    sPos[i*6+2] += speed; // Move head Z
+                    sPos[i*6+5] += speed; // Move tail Z
+                    
+                    // Reset if it flies past the camera to create infinite loop
+                    if (sPos[i*6+2] > camera.position.z + 500) {
+                        const trail = sPos[i*6+2] - sPos[i*6+5];
+                        sPos[i*6+2] = camera.position.z - 3000;
+                        sPos[i*6+5] = (camera.position.z - 3000) - trail;
+                        // Randomize X/Y on reset so pattern never looks repeating
+                        const newX = (Math.random() - 0.5) * 4000;
+                        const newY = (Math.random() - 0.5) * 4000;
+                        sPos[i*6] = newX; sPos[i*6+3] = newX;
+                        sPos[i*6+1] = newY; sPos[i*6+4] = newY;
+                    }
+                }
+                warpStars.geometry.attributes.position.needsUpdate = true;
+            }
 
             // Edges Animation
             let edgeIdx = 0; let sharedGeo = null; linesGroup.children.forEach(c => { if(c.userData.isEnergyStream) sharedGeo = c.geometry; });
@@ -1366,34 +1414,28 @@
                 sharedGeo.attributes.position.needsUpdate = true; sharedGeo.attributes.color.needsUpdate = true;
             }
 
-            // Labels & Visibility & Spawning
+            // Labels, Visibility & Spawning
             const tempV = new THREE.Vector3();
             nodes.forEach(node => {
                 const isHover = node === hoveredNode; const isSelect = node === selectedNode;
-                
-                if (isHiddenNode(node)) { 
-                    if(node.threeGroup) node.threeGroup.visible = false; 
-                    if(node.htmlLabel) node.htmlLabel.classList.add('hidden'); 
-                    return; 
-                }
-                
-                if (node.spawnProgress === undefined) node.spawnProgress = 1.0;
+                if (isHiddenNode(node)) { if(node.threeGroup) node.threeGroup.visible = false; if(node.htmlLabel) node.htmlLabel.classList.add('hidden'); return; }
                 
                 // Spawn Animation
                 if (node.spawnProgress < 1.0) {
-                    node.spawnProgress += 0.02;
+                    node.spawnProgress += 0.015; // Speed of spawn
                     if (node.spawnProgress > 1.0) node.spawnProgress = 1.0;
                     
-                    const p = node.spawnProgress;
-                    const easeScale = 1 - Math.pow(1 - p, 4); // Quick pop out
-                    
-                    if (node.threeGroup) {
-                        node.threeGroup.visible = true;
-                        node.threeGroup.scale.set(Math.max(0.001, easeScale), Math.max(0.001, easeScale), Math.max(0.001, easeScale));
-                    }
-                    
-                    if (node.htmlLabel) {
-                        node.htmlLabel.style.opacity = Math.max(0, (p - 0.5) * 2).toString(); // Fades in halfway through
+                    if (node.spawnProgress > 0) { // Delayed start for staggered effect
+                        const p = node.spawnProgress;
+                        const easeScale = 1 - Math.pow(1 - p, 4); // Quick pop out
+                        
+                        if (node.threeGroup) {
+                            node.threeGroup.visible = true;
+                            node.threeGroup.scale.set(Math.max(0.001, easeScale), Math.max(0.001, easeScale), Math.max(0.001, easeScale));
+                        }
+                        if (node.htmlLabel) {
+                            node.htmlLabel.style.opacity = Math.max(0, (p - 0.5) * 2).toString(); // Fades in halfway through
+                        }
                     }
                 } else {
                     if (node.threeGroup && node.threeGroup.scale.x !== 1) node.threeGroup.scale.set(1, 1, 1);
@@ -1475,8 +1517,7 @@
             const scale = Math.max(0.3, Math.min(1.0, 1000 / dist));
             const rad = (selectedNode.type === 'core' ? 35 : (selectedNode.type === 'dept' ? 20 : 10));
             contextMenu.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; 
-            // Spawn perfectly above the node relative to its size
-            contextMenu.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight - (rad * scale * 2.5) - 20}px`;
+            contextMenu.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight - (rad * scale * 2.0) - 25}px`; // Spawn directly above node
         }
 
         // --- OPEN VIEW MODAL LOGIC ---
@@ -1669,7 +1710,6 @@
                     charge: type === 'core' ? -3000 : (type === 'dept' ? -1200 : -500),
                     status: type === 'note' ? 'New' : null,
                     startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
-                    spawnProgress: 0.0,
                     createdBy: document.getElementById('profile-name').textContent || 'System',
                     createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
                 };
@@ -1735,7 +1775,7 @@
             const node = nodes.find(n => n.id === nodeId); 
             if (!node) return;
 
-            // 1. Optimistic UI update (Instant feedback)
+            // Optimistic UI Update: Vaporize instantly before waiting for Database
             node.isArchived = status;
             if (status) {
                 if (node.threeGroup) node.threeGroup.visible = false;
@@ -1745,42 +1785,19 @@
                 if (node.htmlLabel) node.htmlLabel.classList.remove('hidden');
             }
             
-            // 2. Sever/Rebuild edges locally right away
-            rebuildEdges();
-
-            // 3. Recursive local update for children
-            const children = nodes.filter(n => n.parentId === nodeId);
-            for(let child of children) { 
-                child.isArchived = status;
-                if (status) {
-                    if (child.threeGroup) child.threeGroup.visible = false;
-                    if (child.htmlLabel) child.htmlLabel.classList.add('hidden');
-                }
-            }
+            rebuildEdges(); // Instantly update connecting lines locally
 
             if (isTestMode) {
+                const children = nodes.filter(n => n.parentId === nodeId);
                 for(let child of children) { await setArchiveStatusDB(child.id, status); }
                 return;
             }
             
-            // 4. Send to Firebase (Batch for children)
-            if (userId) {
-                try {
-                    const batch = writeBatch(db);
-                    batch.update(doc(nodesCollection, nodeId), { isArchived: status });
-                    children.forEach(child => {
-                        batch.update(doc(nodesCollection, child.id), { isArchived: status });
-                    });
-                    await batch.commit();
-                } catch(e) { 
-                    console.error("Firebase Archive Error", e); 
-                    // Rollback optimistic update on failure
-                    node.isArchived = !status;
-                    children.forEach(c => c.isArchived = !status);
-                    rebuildEdges();
-                }
-            }
-
+            // Database Request
+            await updateNodeInDB(nodeId, { isArchived: status });
+            
+            // Recurse for children
+            const children = nodes.filter(n => n.parentId === nodeId);
             for(let child of children) { await setArchiveStatusDB(child.id, status); }
         }
 
@@ -1792,8 +1809,7 @@
             document.getElementById('confirm-archive-modal').style.display = 'none'; 
             
             const idToArchive = selectedNode.id;
-            selectedNode = null; 
-            contextMenu.style.display = 'none'; 
+            selectedNode = null; contextMenu.style.display = 'none'; 
             
             await setArchiveStatusDB(idToArchive, true);
         });
@@ -1912,6 +1928,7 @@
         const googleProvider = new GoogleAuthProvider();
 
         testModeBtn.addEventListener('click', () => {
+            if (isTestMode) return; // Prevent double-clicking during the fade out animation
             isTestMode = true;
             document.getElementById('profile-name').textContent = "Test User";
             document.getElementById('profile-avatar').textContent = "T";
@@ -1947,9 +1964,13 @@
                     userId = user.uid;
                     logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
                     
-                    const nickname = email.split('@')[0]; 
+                    const savedName = localStorage.getItem('hive_profile_name');
+                    const nickname = savedName ? savedName : email.split('@')[0]; 
                     document.getElementById('profile-name').textContent = nickname; 
                     document.getElementById('profile-avatar').textContent = nickname.charAt(0).toUpperCase();
+
+                    const savedDept = localStorage.getItem('hive_profile_dept');
+                    if (savedDept) document.getElementById('profile-dept').textContent = savedDept;
 
                     // 1. Start Live Snapshot Sync
                     startRealtimeSync();
