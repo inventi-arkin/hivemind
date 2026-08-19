@@ -130,7 +130,7 @@
         #node-context-menu {
             position: absolute; display: none; z-index: 60; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 5px; gap: 5px;
-            transform: translate(-50%, -100%); pointer-events: auto;
+            transform: translate(-50%, -100%); margin-top: -10px; pointer-events: auto;
         }
         .action-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s ease; pointer-events: auto; }
         .action-btn:hover { transform: scale(1.1); }
@@ -255,7 +255,15 @@
         .help-badge-inline { display: none; background: #ef4444; color: white; width: 12px; height: 12px; border-radius: 50%; font-size: 8px; font-weight: bold; align-items: center; justify-content: center; }
         .node-label-box.needs-help .help-badge-inline { display: flex; }
 
-        .node-name { color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 3px rgba(0,0,0,0.8); max-width: 85px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .node-name { 
+            color: rgba(255, 255, 255, 0.9); 
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            max-width: 120px; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+            display: inline-block; 
+        }
         .dept-font .node-name { font: bold 12px 'Inter', sans-serif; }
         .topic-font .node-name { font: 600 10px 'Inter', sans-serif; }
         .note-font .node-name { font: 400 9px 'Inter', sans-serif; }
@@ -307,7 +315,20 @@
         </div>
     </div>
 
-    <!-- Custom Auth Modal (REMOVED: Using direct Test Mode fallback) -->
+    <!-- Custom Auth Modal -->
+    <div id="auth-modal" class="interactive fixed inset-0 z-[200] hidden items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center">
+            <h2 class="text-xl font-bold mb-4 tracking-[0.1em] text-white">GOOGLE AUTH</h2>
+            <p class="text-xs text-gray-300 mb-6">Simulation: Enter your workspace email.</p>
+            <form id="auth-form" class="space-y-4 text-left">
+                <input type="email" id="auth-email-input" placeholder="user@inventi.ph" class="glass-input w-full px-3 py-2 text-sm rounded-lg" required>
+                <div class="flex space-x-4 mt-6">
+                    <button type="button" onclick="document.getElementById('auth-modal').style.display='none'" class="glass-input w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CANCEL</button>
+                    <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CONTINUE</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="home-view">
         <!-- 3D Engine Output -->
@@ -346,7 +367,7 @@
                     <input type="checkbox" id="toggle-hide-done-checkbox" class="custom-checkbox">
                 </label>
                 <div class="w-full h-px bg-white/10 my-1"></div>
-                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ALIGN NETWORK</button>
+                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
             </div>
 
             <!-- Profile -->
@@ -626,6 +647,9 @@
         const googleLoginBtn = document.getElementById('google-login-btn');
         const loginError = document.getElementById('login-error');
         const testModeBtn = document.getElementById('test-mode-btn');
+        const authModal = document.getElementById('auth-modal');
+        const authForm = document.getElementById('auth-form');
+        const authEmailInput = document.getElementById('auth-email-input');
         const universeBg = document.getElementById('universe-bg');
         const homeView = document.getElementById('home-view');
         const container = document.getElementById('webgl-container');
@@ -734,17 +758,7 @@
 
         async function pushNodeToDB(nodeData) {
             if (isTestMode) {
-                const safeType = nodeData.type || 'note';
-                const safeColor = nodeData.color || '#06b6d4';
-                const safeCharge = nodeData.charge !== undefined ? nodeData.charge : (safeType === 'core' ? -3000 : (safeType === 'dept' ? -1200 : -500));
-                const safeX = typeof nodeData.x === 'number' && !isNaN(nodeData.x) ? nodeData.x : (Math.random() - 0.5) * 500;
-                const safeY = typeof nodeData.y === 'number' && !isNaN(nodeData.y) ? nodeData.y : (Math.random() - 0.5) * 500;
-
-                const node = { 
-                    ...nodeData, 
-                    type: safeType, color: safeColor, charge: safeCharge, x: safeX, y: safeY,
-                    vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null 
-                };
+                const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
                 nodes.push(node);
                 createWebGLNode(node);
                 rebuildEdges();
@@ -780,18 +794,8 @@
                     
                     if (change.type === 'added') {
                         if (!nodes.find(n => n.id === data.id)) {
-                            // SANITIZATION LAYER: Ensure legacy prod data never infects physics engine with NaN/Undefined
-                            const safeType = data.type || 'note';
-                            const safeColor = data.color || '#06b6d4';
-                            const safeCharge = data.charge !== undefined ? data.charge : (safeType === 'core' ? -3000 : (safeType === 'dept' ? -1200 : -500));
-                            const safeX = typeof data.x === 'number' && !isNaN(data.x) ? data.x : (Math.random() - 0.5) * 500;
-                            const safeY = typeof data.y === 'number' && !isNaN(data.y) ? data.y : (Math.random() - 0.5) * 500;
-
-                            const node = { 
-                                ...data, 
-                                type: safeType, color: safeColor, charge: safeCharge, x: safeX, y: safeY,
-                                vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null 
-                            };
+                            // Construct local physics node from DB data
+                            const node = { ...data, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
                             nodes.push(node);
                             createWebGLNode(node);
                             edgesNeedRebuild = true;
@@ -804,14 +808,10 @@
                             const oldStatus = node.status;
                             const oldArchived = node.isArchived;
 
-                            // Merge DB fields into local physics node (with safety fallbacks)
+                            // Merge DB fields into local physics node
                             node.name = data.name; node.description = data.description;
                             node.status = data.status; node.startDate = data.startDate; node.endDate = data.endDate;
                             node.taskList = data.taskList || []; node.needsHelp = data.needsHelp; node.isArchived = data.isArchived;
-                            
-                            // Safe fallbacks for updates
-                            node.color = data.color || node.color || '#06b6d4';
-                            node.charge = data.charge !== undefined ? data.charge : (node.charge !== undefined ? node.charge : (node.type === 'core' ? -3000 : (node.type === 'dept' ? -1200 : -500)));
 
                             if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status) {
                                 createWebGLNode(node); // Refreshes visuals (red flags, aura)
@@ -829,17 +829,6 @@
                                     if (updatedTask) { currentActiveTask = updatedTask; renderChatMessages(); }
                                 }
                             }
-                        }
-                    }
-                    else if (change.type === 'removed') {
-                        // Handle hard deletions from the database to eradicate ghost nodes
-                        const nodeIndex = nodes.findIndex(n => n.id === data.id);
-                        if (nodeIndex > -1) {
-                            const node = nodes[nodeIndex];
-                            if(node.threeGroup) scene.remove(node.threeGroup);
-                            if(node.htmlLabel) node.htmlLabel.remove();
-                            nodes.splice(nodeIndex, 1);
-                            edgesNeedRebuild = true;
                         }
                     }
                 });
@@ -944,26 +933,26 @@
         }
 
         // --- CORE LOGIC ---
-        function isHiddenNode(node) { 
+        function isHiddenNode(node) {
             if (!node) return true;
-            if (node.isArchived) return true;
             if (hideDoneNodes && node.status === 'Done') return true;
+            if (node.isArchived) return true;
             
-            // Deep Ancestry Check (Eradicates Ghost Nodes if a parent is archived)
-            let curr = nodes.find(n => n.id === node.parentId);
-            while (curr) {
-                if (curr.isArchived) return true;
-                curr = nodes.find(n => n.id === curr.parentId);
+            // Deep Ancestry Check for Archived/Hidden Parents
+            let current = nodes.find(n => n.id === node.parentId);
+            while (current) {
+                if (current.isArchived) return true;
+                current = nodes.find(n => n.id === current.parentId);
             }
             return false;
         }
-
+        
         function getNodePath(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
             while (current) { path.unshift(current.name); current = nodes.find(n => n.id === current.parentId); }
             return path.join(' / ');
         }
-
+        
         function panToNode(node) {
             targetCameraPos = new THREE.Vector3(node.x, node.y, Math.max(800, camera.position.z));
             selectedNode = node; updateContextMenu();
@@ -971,6 +960,9 @@
 
         function nodeDerivedStatus(node) {
             if (node.type !== 'note') return;
+            const oldStatus = node.status;
+            const oldNeedsHelp = node.needsHelp;
+
             if (node.taskList.length === 0) { node.status = 'New'; } 
             else {
                 const doneCount = node.taskList.filter(t => t.done).length;
@@ -979,6 +971,11 @@
                 else node.status = 'In-Progress';
             }
             if (node.status === 'Done' && node.needsHelp) { node.needsHelp = false; }
+            
+            // immediately reflect in view modal
+            if (selectedNode && selectedNode.id === node.id && document.getElementById('view-modal').style.display === 'flex') {
+                updateViewModalStatusDisplay(node);
+            }
         }
 
         function updateViewModalStatusDisplay(node) {
@@ -1002,8 +999,7 @@
                 core.x = 0; core.y = 0; core.vx = 0; core.vy = 0;
             }
 
-            // Universal Orbit Engine (No longer restricted by string names)
-            const depts = nodes.filter(n => n.parentId === (core ? core.id : null));
+            const depts = nodes.filter(n => n.type === 'dept' && !isHiddenNode(n));
             depts.forEach((dept, i) => {
                 const angle = (Math.PI * 2 / depts.length) * i;
                 const distance = 400;
@@ -1011,7 +1007,7 @@
                 dept.y = Math.sin(angle) * distance;
                 dept.vx = 0; dept.vy = 0;
 
-                const topics = nodes.filter(n => n.parentId === dept.id);
+                const topics = nodes.filter(n => n.parentId === dept.id && !isHiddenNode(n));
                 topics.forEach((topic, j) => {
                     const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.4);
                     const tDist = distance + 180;
@@ -1019,7 +1015,7 @@
                     topic.y = Math.sin(tAngle) * tDist;
                     topic.vx = 0; topic.vy = 0;
 
-                    const childNotes = nodes.filter(n => n.parentId === topic.id);
+                    const childNotes = nodes.filter(n => n.parentId === topic.id && !isHiddenNode(n));
                     childNotes.forEach((note, k) => {
                         const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.3);
                         const nDist = tDist + 100;
@@ -1030,17 +1026,13 @@
                 });
             });
 
-            // Handle orphans (nodes that bypass the normal structure)
+            // 1. Move them visually
             nodes.forEach(node => {
-                if (node.type !== 'core' && node.parentId === null) {
-                    node.x = (Math.random() - 0.5) * 4000;
-                    node.y = (Math.random() - 0.5) * 4000;
-                }
                 if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0);
             });
             rebuildEdges();
 
-            // Save new coordinates to Firebase Batch
+            // 2. Save new coordinates to Firebase
             if (!isTestMode && userId) {
                 const batch = writeBatch(db);
                 nodes.forEach(node => {
@@ -1196,22 +1188,24 @@
 
         // --- WEBGL DATA MANAGEMENT ---
         function createWebGLNode(node) {
-            // Memory cleanup for ghost nodes
+            // Deep Purge to entirely kill GPU ghost nodes
             if(node.threeGroup) {
-                node.threeGroup.children.forEach(child => {
-                    if (child.material) child.material.dispose();
-                    if (child.geometry) child.geometry.dispose();
+                node.threeGroup.children.forEach(c => {
+                    if(c.geometry) c.geometry.dispose();
+                    if(c.material) c.material.dispose();
+                    if(c.children) {
+                        c.children.forEach(cc => {
+                            if(cc.geometry) cc.geometry.dispose();
+                            if(cc.material) cc.material.dispose();
+                        });
+                    }
                 });
                 scene.remove(node.threeGroup);
             }
             if(node.htmlLabel) node.htmlLabel.remove();
 
             const group = new THREE.Group(); const radius = node.type === 'core' ? 30 : (node.type === 'dept' ? 18 : 9);
-            
-            // Safe fallback color logic
-            const safeColor = node.color || '#06b6d4';
-            const renderColor = (node.needsHelp && node.status !== 'Done') ? '#ef4444' : safeColor; 
-            const rColorObj = new THREE.Color(renderColor);
+            const renderColor = (node.needsHelp && node.status !== 'Done') ? '#ef4444' : node.color; const rColorObj = new THREE.Color(renderColor);
 
             const coreMat = new THREE.SpriteMaterial({ map: sharedCoreTexture, color: 0xffffff, blending: THREE.NormalBlending, depthWrite: false });
             const coreSprite = new THREE.Sprite(coreMat); const solidScale = node.type === 'core' ? radius * 2.2 : radius * 1.5;
@@ -1270,11 +1264,15 @@
             centerSprite.scale.set(centerScale, centerScale, 1); dustGroup.add(centerSprite);
             group.add(dustGroup); node.dustRef = dustGroup; group.position.set(node.x, node.y, 0); node.threeGroup = group; scene.add(group);
 
+            // Spawn progress setup
+            group.scale.set(0.001, 0.001, 0.001);
+            node.spawnProgress = 0.0;
+
             const labelDiv = document.createElement('div'); labelDiv.className = `node-label ${node.type}-font`;
             const boxDiv = document.createElement('div'); boxDiv.className = 'node-label-box';
             if (node.needsHelp && node.status !== 'Done') boxDiv.classList.add('needs-help');
             
-            const textSpan = document.createElement('span'); textSpan.className = 'node-name'; textSpan.innerText = (node.name || 'UNKNOWN').toUpperCase(); boxDiv.appendChild(textSpan);
+            const textSpan = document.createElement('span'); textSpan.className = 'node-name'; textSpan.innerText = node.name.toUpperCase(); boxDiv.appendChild(textSpan);
             if (node.status) {
                 const statusSpan = document.createElement('span'); statusSpan.className = 'status-badge ' + (node.status === 'New' ? 'status-new' : (node.status === 'In-Progress' ? 'status-progress' : 'status-done'));
                 statusSpan.innerText = node.status; boxDiv.appendChild(statusSpan);
@@ -1290,7 +1288,7 @@
             return {
                 id, parentId, type, name, description, color, x, y, charge,
                 status: type === 'note' ? 'New' : null, startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
-                createdBy: document.getElementById('profile-name') ? (document.getElementById('profile-name').textContent || 'System') : 'System', 
+                createdBy: document.getElementById('profile-name').textContent || 'System', 
                 createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
             };
         }
@@ -1301,8 +1299,7 @@
 
             edges.forEach(edge => {
                 if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
-                const safeColor = edge.target.color || '#06b6d4';
-                const rColor = (edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : safeColor;
+                const rColor = (edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : edge.target.color;
                 const c = new THREE.Color(rColor);
                 for(let i=0; i<POINTS; i++) { positions.push(0,0,0); colors.push(c.r, c.g, c.b); }
             });
@@ -1351,8 +1348,7 @@
                     if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
                     const dx = edge.target.x - edge.source.x, dy = edge.target.y - edge.source.y, dist = Math.hypot(dx, dy);
                     const nx = dist === 0 ? 0 : -dy / dist; const ny = dist === 0 ? 0 : dx / dist;  
-                    const safeColor = edge.target.color || '#06b6d4';
-                    const baseColor = new THREE.Color((edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : safeColor);
+                    const baseColor = new THREE.Color((edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : edge.target.color);
                     
                     for(let i=0; i<POINTS; i++) {
                         const t = i / (POINTS - 1);
@@ -1370,15 +1366,44 @@
                 sharedGeo.attributes.position.needsUpdate = true; sharedGeo.attributes.color.needsUpdate = true;
             }
 
-            // Labels & Visibility
+            // Labels & Visibility & Spawning
             const tempV = new THREE.Vector3();
             nodes.forEach(node => {
                 const isHover = node === hoveredNode; const isSelect = node === selectedNode;
-                if (isHiddenNode(node)) { if(node.threeGroup) node.threeGroup.visible = false; if(node.htmlLabel) node.htmlLabel.classList.add('hidden'); return; }
-                if(node.threeGroup) node.threeGroup.visible = true;
+                
+                if (isHiddenNode(node)) { 
+                    if(node.threeGroup) node.threeGroup.visible = false; 
+                    if(node.htmlLabel) node.htmlLabel.classList.add('hidden'); 
+                    return; 
+                }
+                
+                if (node.spawnProgress === undefined) node.spawnProgress = 1.0;
+                
+                // Spawn Animation
+                if (node.spawnProgress < 1.0) {
+                    node.spawnProgress += 0.02;
+                    if (node.spawnProgress > 1.0) node.spawnProgress = 1.0;
+                    
+                    const p = node.spawnProgress;
+                    const easeScale = 1 - Math.pow(1 - p, 4); // Quick pop out
+                    
+                    if (node.threeGroup) {
+                        node.threeGroup.visible = true;
+                        node.threeGroup.scale.set(Math.max(0.001, easeScale), Math.max(0.001, easeScale), Math.max(0.001, easeScale));
+                    }
+                    
+                    if (node.htmlLabel) {
+                        node.htmlLabel.style.opacity = Math.max(0, (p - 0.5) * 2).toString(); // Fades in halfway through
+                    }
+                } else {
+                    if (node.threeGroup && node.threeGroup.scale.x !== 1) node.threeGroup.scale.set(1, 1, 1);
+                    if (node.threeGroup) node.threeGroup.visible = true;
+                    if (node.htmlLabel && node.htmlLabel.style.opacity !== '') node.htmlLabel.style.opacity = '';
+                }
+
                 if (node.dustRef) node.dustRef.rotation.z -= (node.type === 'core' ? 0.0005 : 0.0015);
-                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.7 + Math.sin(time * 2 + (node.x || 0)) * 0.15;
-                if (node.htmlLabel && typeof node.x === 'number' && typeof node.y === 'number') {
+                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.7 + Math.sin(time * 2 + node.x) * 0.15;
+                if (node.htmlLabel) {
                     tempV.set(node.x, node.y, 0).project(camera);
                     const screenX = (tempV.x * .5 + .5) * window.innerWidth; const screenY = (tempV.y * -.5 + .5) * window.innerHeight;
                     const dist = camera.position.distanceTo(new THREE.Vector3(node.x, node.y, 0));
@@ -1387,9 +1412,11 @@
                     node.htmlLabel.style.transform = `translate(-50%, -50%) scale(${scale})`;
                     node.htmlLabel.style.left = `${screenX}px`; node.htmlLabel.style.top = `${screenY + (rad * 2 * scale) + 15}px`;
                     
-                    if (scale < 0.4 && node.type === 'note' && !isSelect && !isHover) node.htmlLabel.classList.add('hidden');
-                    else if (showLabels || isSelect || isHover) node.htmlLabel.classList.remove('hidden');
-                    else node.htmlLabel.classList.add('hidden');
+                    if (node.spawnProgress >= 1.0) {
+                        if (scale < 0.4 && node.type === 'note' && !isSelect && !isHover) node.htmlLabel.classList.add('hidden');
+                        else if (showLabels || isSelect || isHover) node.htmlLabel.classList.remove('hidden');
+                        else node.htmlLabel.classList.add('hidden');
+                    }
                 }
             });
             renderer.render(scene, camera);
@@ -1446,9 +1473,10 @@
             const tempV = new THREE.Vector3().set(selectedNode.x, selectedNode.y, 0).project(camera);
             const dist = camera.position.distanceTo(new THREE.Vector3(selectedNode.x, selectedNode.y, 0));
             const scale = Math.max(0.3, Math.min(1.0, 1000 / dist));
-            const rad = (selectedNode.type === 'core' ? 30 : (selectedNode.type === 'dept' ? 18 : 9));
+            const rad = (selectedNode.type === 'core' ? 35 : (selectedNode.type === 'dept' ? 20 : 10));
             contextMenu.style.left = `${(tempV.x * .5 + .5) * window.innerWidth}px`; 
-            contextMenu.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight - (rad * scale * 1.5) - 5}px`;
+            // Spawn perfectly above the node relative to its size
+            contextMenu.style.top = `${(tempV.y * -.5 + .5) * window.innerHeight - (rad * scale * 2.5) - 20}px`;
         }
 
         // --- OPEN VIEW MODAL LOGIC ---
@@ -1641,6 +1669,7 @@
                     charge: type === 'core' ? -3000 : (type === 'dept' ? -1200 : -500),
                     status: type === 'note' ? 'New' : null,
                     startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
+                    spawnProgress: 0.0,
                     createdBy: document.getElementById('profile-name').textContent || 'System',
                     createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
                 };
@@ -1703,17 +1732,55 @@
 
         // --- ARCHIVE LOGIC ---
         async function setArchiveStatusDB(nodeId, status) {
+            const node = nodes.find(n => n.id === nodeId); 
+            if (!node) return;
+
+            // 1. Optimistic UI update (Instant feedback)
+            node.isArchived = status;
+            if (status) {
+                if (node.threeGroup) node.threeGroup.visible = false;
+                if (node.htmlLabel) node.htmlLabel.classList.add('hidden');
+            } else {
+                if (node.threeGroup) node.threeGroup.visible = true;
+                if (node.htmlLabel) node.htmlLabel.classList.remove('hidden');
+            }
+            
+            // 2. Sever/Rebuild edges locally right away
+            rebuildEdges();
+
+            // 3. Recursive local update for children
+            const children = nodes.filter(n => n.parentId === nodeId);
+            for(let child of children) { 
+                child.isArchived = status;
+                if (status) {
+                    if (child.threeGroup) child.threeGroup.visible = false;
+                    if (child.htmlLabel) child.htmlLabel.classList.add('hidden');
+                }
+            }
+
             if (isTestMode) {
-                const node = nodes.find(n => n.id === nodeId); 
-                if (node) node.isArchived = status;
-                const children = nodes.filter(n => n.parentId === nodeId);
                 for(let child of children) { await setArchiveStatusDB(child.id, status); }
-                rebuildEdges();
                 return;
             }
-            const node = nodes.find(n => n.id === nodeId); if (!node) return;
-            await updateNodeInDB(nodeId, { isArchived: status });
-            const children = nodes.filter(n => n.parentId === nodeId);
+            
+            // 4. Send to Firebase (Batch for children)
+            if (userId) {
+                try {
+                    const batch = writeBatch(db);
+                    batch.update(doc(nodesCollection, nodeId), { isArchived: status });
+                    children.forEach(child => {
+                        batch.update(doc(nodesCollection, child.id), { isArchived: status });
+                    });
+                    await batch.commit();
+                } catch(e) { 
+                    console.error("Firebase Archive Error", e); 
+                    // Rollback optimistic update on failure
+                    node.isArchived = !status;
+                    children.forEach(c => c.isArchived = !status);
+                    rebuildEdges();
+                }
+            }
+
             for(let child of children) { await setArchiveStatusDB(child.id, status); }
         }
 
@@ -1725,7 +1792,8 @@
             document.getElementById('confirm-archive-modal').style.display = 'none'; 
             
             const idToArchive = selectedNode.id;
-            selectedNode = null; contextMenu.style.display = 'none'; 
+            selectedNode = null; 
+            contextMenu.style.display = 'none'; 
             
             await setArchiveStatusDB(idToArchive, true);
         });
@@ -1845,13 +1913,9 @@
 
         testModeBtn.addEventListener('click', () => {
             isTestMode = true;
-            
-            const savedName = localStorage.getItem('hive_profile_name');
-            const savedDept = localStorage.getItem('hive_profile_dept');
-            
-            document.getElementById('profile-name').textContent = savedName || "Test User";
-            document.getElementById('profile-avatar').textContent = (savedName || "T").charAt(0).toUpperCase();
-            document.getElementById('profile-dept').textContent = savedDept || "Simulation";
+            document.getElementById('profile-name').textContent = "Test User";
+            document.getElementById('profile-avatar').textContent = "T";
+            document.getElementById('profile-dept').textContent = "Simulation";
             
             logAction('SYSTEM', `Test Mode activated. Loading local mock topology...`);
             generateInitialTopology(true);
@@ -1883,13 +1947,9 @@
                     userId = user.uid;
                     logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
                     
-                    const savedName = localStorage.getItem('hive_profile_name');
-                    const savedDept = localStorage.getItem('hive_profile_dept');
-                    const defaultNickname = email.split('@')[0]; 
-                    
-                    document.getElementById('profile-name').textContent = savedName || defaultNickname; 
-                    document.getElementById('profile-avatar').textContent = (savedName || defaultNickname).charAt(0).toUpperCase();
-                    if (savedDept) document.getElementById('profile-dept').textContent = savedDept;
+                    const nickname = email.split('@')[0]; 
+                    document.getElementById('profile-name').textContent = nickname; 
+                    document.getElementById('profile-avatar').textContent = nickname.charAt(0).toUpperCase();
 
                     // 1. Start Live Snapshot Sync
                     startRealtimeSync();
