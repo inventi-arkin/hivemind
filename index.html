@@ -76,20 +76,9 @@
         select option { background: #020205; color: white; }
 
         /* --- Date Picker Styling --- */
-        input[type="date"] {
-            color-scheme: dark; /* Forces native dark mode popup */
-        }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            background-color: transparent;
-            padding: 5px;
-            cursor: pointer;
-            border-radius: 3px;
-            filter: invert(1) opacity(0.6);
-            transition: all 0.2s;
-        }
-        input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            filter: invert(1) opacity(1) drop-shadow(0 0 5px #06b6d4);
-        }
+        input[type="date"] { color-scheme: dark; }
+        input[type="date"]::-webkit-calendar-picker-indicator { background-color: transparent; padding: 5px; cursor: pointer; border-radius: 3px; filter: invert(1) opacity(0.6); transition: all 0.2s; }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover { filter: invert(1) opacity(1) drop-shadow(0 0 5px #06b6d4); }
 
         /* --- VIEW CONTAINERS --- */
         #login-view { transition: opacity 1s ease, transform 1s ease; position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 50; }
@@ -307,21 +296,6 @@
         </div>
     </div>
 
-    <!-- Custom Auth Modal -->
-    <div id="auth-modal" class="interactive fixed inset-0 z-[200] hidden items-center justify-center bg-black/80 backdrop-blur-md">
-        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center">
-            <h2 class="text-xl font-bold mb-4 tracking-[0.1em] text-white">GOOGLE AUTH</h2>
-            <p class="text-xs text-gray-300 mb-6">Simulation: Enter your workspace email.</p>
-            <form id="auth-form" class="space-y-4 text-left">
-                <input type="email" id="auth-email-input" placeholder="user@inventi.ph" class="glass-input w-full px-3 py-2 text-sm rounded-lg" required>
-                <div class="flex space-x-4 mt-6">
-                    <button type="button" onclick="document.getElementById('auth-modal').style.display='none'" class="glass-input w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CANCEL</button>
-                    <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CONTINUE</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="home-view">
         <!-- 3D Engine Output -->
         <div id="webgl-container"></div>
@@ -358,8 +332,6 @@
                     <span>Hide Done</span>
                     <input type="checkbox" id="toggle-hide-done-checkbox" class="custom-checkbox">
                 </label>
-                <div class="w-full h-px bg-white/10 my-1"></div>
-                <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
             </div>
 
             <!-- Profile -->
@@ -398,7 +370,6 @@
             </div>
 
             <!-- MODALS -->
-            
             <div id="profile-modal" class="interactive fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center">
                     <h2 class="text-xl font-bold mb-4 tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">UPDATE PROFILE</h2>
@@ -596,7 +567,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, writeBatch, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Environment Variables
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'hive-mind-default';
@@ -639,9 +610,6 @@
         const googleLoginBtn = document.getElementById('google-login-btn');
         const loginError = document.getElementById('login-error');
         const testModeBtn = document.getElementById('test-mode-btn');
-        const authModal = document.getElementById('auth-modal');
-        const authForm = document.getElementById('auth-form');
-        const authEmailInput = document.getElementById('auth-email-input');
         const universeBg = document.getElementById('universe-bg');
         const homeView = document.getElementById('home-view');
         const container = document.getElementById('webgl-container');
@@ -729,28 +697,9 @@
         backgroundGroup.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })));
 
         // --- FIREBASE DATA & SYNC ENGINE ---
-        async function initAuth() {
-            try {
-                if (customToken) { 
-                    try {
-                        await signInWithCustomToken(auth, customToken); 
-                    } catch (tokenErr) {
-                        console.warn("Custom token mismatch (expected for custom Firebase configs). Falling back to anonymous auth.");
-                        await signInAnonymously(auth);
-                    }
-                } 
-                else { 
-                    await signInAnonymously(auth); 
-                }
-                userId = auth.currentUser.uid;
-            } catch (e) { 
-                console.error("Firebase Auth Error", e); 
-            }
-        }
-
         async function pushNodeToDB(nodeData) {
             if (isTestMode) {
-                const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                const node = { ...nodeData, vx: 0, vy: 0, anchorX: nodeData.x, anchorY: nodeData.y, threeGroup: null, htmlLabel: null, dustRef: null };
                 nodes.push(node);
                 createWebGLNode(node);
                 rebuildEdges();
@@ -758,7 +707,7 @@
             }
             if (!userId) return;
             const cleanData = { ...nodeData };
-            delete cleanData.threeGroup; delete cleanData.htmlLabel; delete cleanData.dustRef; delete cleanData.vx; delete cleanData.vy;
+            delete cleanData.threeGroup; delete cleanData.htmlLabel; delete cleanData.dustRef; delete cleanData.vx; delete cleanData.vy; delete cleanData.anchorX; delete cleanData.anchorY;
             try { await setDoc(doc(nodesCollection, nodeData.id), cleanData); } catch(e) { console.error("Error saving node", e); }
         }
 
@@ -767,7 +716,7 @@
                 const node = nodes.find(n => n.id === nodeId);
                 if (node) {
                     Object.assign(node, updates);
-                    createWebGLNode(node); // Refreshes visuals
+                    createWebGLNode(node); 
                     rebuildEdges();
                     updateHelpList();
                 }
@@ -779,18 +728,18 @@
 
         function startRealtimeSync() {
             onSnapshot(nodesCollection, (snapshot) => {
-                let edgesNeedRebuild = false;
+                let topologyChanged = false;
                 
                 snapshot.docChanges().forEach((change) => {
                     const data = change.doc.data();
                     
                     if (change.type === 'added') {
                         if (!nodes.find(n => n.id === data.id)) {
-                            // Construct local physics node from DB data
-                            const node = { ...data, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                            // Anchor coordinates will be dynamically calculated, start them near center to avoid snap
+                            const node = { ...data, vx: 0, vy: 0, anchorX: 0, anchorY: 0, x: 0, y: 0, threeGroup: null, htmlLabel: null, dustRef: null };
                             nodes.push(node);
                             createWebGLNode(node);
-                            edgesNeedRebuild = true;
+                            topologyChanged = true;
                         }
                     } 
                     else if (change.type === 'modified') {
@@ -799,19 +748,17 @@
                             const oldNeedsHelp = node.needsHelp;
                             const oldStatus = node.status;
                             const oldArchived = node.isArchived;
+                            const oldName = node.name;
 
-                            // Merge DB fields into local physics node
                             node.name = data.name; node.description = data.description;
                             node.status = data.status; node.startDate = data.startDate; node.endDate = data.endDate;
                             node.taskList = data.taskList || []; node.needsHelp = data.needsHelp; node.isArchived = data.isArchived;
 
-                            if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status) {
-                                createWebGLNode(node); // Refreshes visuals (red flags, aura)
-                                edgesNeedRebuild = true;
+                            if (oldNeedsHelp !== node.needsHelp || oldStatus !== node.status || oldName !== node.name) {
+                                createWebGLNode(node);
                             }
-                            if (oldArchived !== node.isArchived) { edgesNeedRebuild = true; }
+                            if (oldArchived !== node.isArchived) { topologyChanged = true; }
 
-                            // Refresh UI if user is actively looking at this node
                             if (selectedNode && selectedNode.id === node.id) {
                                 updateViewModalStatusDisplay(node);
                                 if (document.getElementById('view-modal').style.display === 'flex') {
@@ -826,10 +773,42 @@
                     }
                 });
 
-                if (edgesNeedRebuild) { rebuildEdges(); updateHelpList(); }
+                if (topologyChanged) { rebuildEdges(); updateHelpList(); }
                 
             }, (error) => {
                 console.error("Firebase Sync Error:", error);
+            });
+        }
+
+        // --- DETERMINISTIC ORBITAL LAYOUT ---
+        // This completely eliminates chaotic physics desyncs between users.
+        // It calculates mathematically perfect anchor slots for every node based purely on the DB structure.
+        function calculateDeterministicAnchors() {
+            const core = nodes.find(n => n.type === 'core');
+            if (core) { core.anchorX = 0; core.anchorY = 0; }
+
+            // Sort arrays by ID to guarantee identical ordering across all clients
+            const depts = nodes.filter(n => n.type === 'dept' && !isHiddenNode(n)).sort((a,b) => a.id.localeCompare(b.id));
+            depts.forEach((dept, i) => {
+                const angle = (Math.PI * 2 / Math.max(1, depts.length)) * i;
+                const distance = 450;
+                dept.anchorX = Math.cos(angle) * distance; dept.anchorY = Math.sin(angle) * distance;
+
+                const topics = nodes.filter(n => n.parentId === dept.id && !isHiddenNode(n)).sort((a,b) => a.id.localeCompare(b.id));
+                topics.forEach((topic, j) => {
+                    const spread = Math.min(Math.PI / 1.8, topics.length * 0.25); 
+                    const tAngle = topics.length > 1 ? angle - (spread/2) + (spread / (topics.length - 1)) * j : angle;
+                    const tDist = distance + 220;
+                    topic.anchorX = Math.cos(tAngle) * tDist; topic.anchorY = Math.sin(tAngle) * tDist;
+
+                    const childNotes = nodes.filter(n => n.parentId === topic.id && !isHiddenNode(n)).sort((a,b) => a.id.localeCompare(b.id));
+                    childNotes.forEach((note, k) => {
+                        const nSpread = Math.min(Math.PI / 2.0, childNotes.length * 0.20);
+                        const nAngle = childNotes.length > 1 ? tAngle - (nSpread/2) + (nSpread / (childNotes.length - 1)) * k : tAngle;
+                        const nDist = tDist + 150;
+                        note.anchorX = Math.cos(nAngle) * nDist; note.anchorY = Math.sin(nAngle) * nDist;
+                    });
+                });
             });
         }
 
@@ -841,6 +820,7 @@
                     if (parent && !isHiddenNode(parent)) edges.push({ source: parent, target: node });
                 }
             });
+            calculateDeterministicAnchors(); // Immediately calculate new orbital slots for all nodes
             rebuildLineGeometry();
         }
 
@@ -850,12 +830,12 @@
             
             function queueNode(nodeData) {
                 if (isLocal) {
-                    const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                    const node = { ...nodeData, vx: 0, vy: 0, anchorX: 0, anchorY: 0, threeGroup: null, htmlLabel: null, dustRef: null };
                     nodes.push(node);
                     createWebGLNode(node);
                 } else {
                     const clean = { ...nodeData };
-                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
+                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy; delete clean.anchorX; delete clean.anchorY;
                     batch.set(doc(nodesCollection, nodeData.id), clean);
                 }
             }
@@ -908,32 +888,25 @@
             const snap = await getDocs(nodesCollection);
             if (snap.empty) {
                 logAction('SYSTEM', 'Database empty. Initializing Core cluster...');
-                
-                // For real authenticated users, only generate the absolute root node
                 const batch = writeBatch(db);
                 const core = createNodeData('core', null, 'core', 'CORE', 'Central Neural Hub', '#06b6d4', 0, 0);
-                
                 const clean = { ...core };
-                delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
-                
+                delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy; delete clean.anchorX; delete clean.anchorY;
                 batch.set(doc(nodesCollection, core.id), clean);
                 await batch.commit();
-                
                 logAction('SYSTEM', 'Core initialized on cloud. Ready for input.');
             } else {
-                logAction('SYSTEM', 'Neural Network synced from cloud database.');
+                logAction('SYSTEM', 'Neural topology fully synchronized across all instances.');
             }
         }
 
         // --- CORE LOGIC ---
         function isHiddenNode(node) { return (hideDoneNodes && node.status === 'Done') || node.isArchived; }
-        
         function getNodePath(nodeId) {
             let path = []; let current = nodes.find(n => n.id === nodeId);
             while (current) { path.unshift(current.name); current = nodes.find(n => n.id === current.parentId); }
             return path.join(' / ');
         }
-        
         function panToNode(node) {
             targetCameraPos = new THREE.Vector3(node.x, node.y, Math.max(800, camera.position.z));
             selectedNode = node; updateContextMenu();
@@ -941,9 +914,7 @@
 
         function nodeDerivedStatus(node) {
             if (node.type !== 'note') return;
-            const oldStatus = node.status;
-            const oldNeedsHelp = node.needsHelp;
-
+            const oldStatus = node.status; const oldNeedsHelp = node.needsHelp;
             if (node.taskList.length === 0) { node.status = 'New'; } 
             else {
                 const doneCount = node.taskList.filter(t => t.done).length;
@@ -953,9 +924,9 @@
             }
             if (node.status === 'Done' && node.needsHelp) { node.needsHelp = false; }
             
-            // immediately reflect in view modal
-            if (selectedNode && selectedNode.id === node.id && document.getElementById('view-modal').style.display === 'flex') {
-                updateViewModalStatusDisplay(node);
+            // Instantly update visual state locally before DB sync
+            if (oldStatus !== node.status || oldNeedsHelp !== node.needsHelp) {
+                createWebGLNode(node); rebuildLineGeometry(); updateHelpList();
             }
         }
 
@@ -973,51 +944,6 @@
             else { helpBanner.classList.add('hidden'); helpBanner.classList.remove('flex'); }
         }
 
-        function rearrangeNetwork() {
-            logAction('SYSTEM', 'Initiating neural network realignment...');
-            const core = nodes.find(n => n.type === 'core');
-            if (core) {
-                core.x = 0; core.y = 0; core.vx = 0; core.vy = 0;
-            }
-
-            const depts = nodes.filter(n => n.type === 'dept');
-            depts.forEach((dept, i) => {
-                const angle = (Math.PI * 2 / depts.length) * i;
-                const distance = 400;
-                dept.x = Math.cos(angle) * distance;
-                dept.y = Math.sin(angle) * distance;
-                dept.vx = 0; dept.vy = 0;
-
-                const topics = nodes.filter(n => n.parentId === dept.id);
-                topics.forEach((topic, j) => {
-                    const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.4);
-                    const tDist = distance + 180;
-                    topic.x = Math.cos(tAngle) * tDist;
-                    topic.y = Math.sin(tAngle) * tDist;
-                    topic.vx = 0; topic.vy = 0;
-
-                    const childNotes = nodes.filter(n => n.parentId === topic.id);
-                    childNotes.forEach((note, k) => {
-                        const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.3);
-                        const nDist = tDist + 100;
-                        note.x = Math.cos(nAngle) * nDist;
-                        note.y = Math.sin(nAngle) * nDist;
-                        note.vx = 0; note.vy = 0;
-                    });
-                });
-            });
-
-            nodes.forEach(node => {
-                if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0);
-            });
-            rebuildEdges();
-        }
-
-        document.getElementById('rearrange-btn').addEventListener('click', () => {
-            rearrangeNetwork();
-            viewOptionsMenu.style.display = 'none';
-        });
-
         // --- TASK & CHAT RENDERERS ---
         function renderTaskList() {
             const container = document.getElementById('task-list-container'); container.innerHTML = '';
@@ -1032,23 +958,10 @@
                 checkbox.addEventListener('change', async () => {
                     task.done = checkbox.checked;
                     task.lastModified = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-                    task.lastModifiedBy = document.getElementById('profile-name').textContent || 'System';
+                    task.lastModifiedBy = document.getElementById('profile-name').textContent;
                     
-                    // Optimistic UI update
-                    nodeDerivedStatus(selectedNode); 
-                    renderTaskList();
-                    
-                    // Force WebGL updates immediately
-                    createWebGLNode(selectedNode); 
-                    rebuildEdges();
-                    updateHelpList();
-
-                    // Push to Cloud
-                    await updateNodeInDB(selectedNode.id, {
-                        taskList: selectedNode.taskList,
-                        status: selectedNode.status,
-                        needsHelp: selectedNode.needsHelp
-                    });
+                    nodeDerivedStatus(selectedNode); renderTaskList();
+                    await updateNodeInDB(selectedNode.id, { taskList: selectedNode.taskList, status: selectedNode.status, needsHelp: selectedNode.needsHelp });
                 });
                 
                 const textContainer = document.createElement('div'); textContainer.style.flexGrow = '1';
@@ -1070,12 +983,6 @@
                     delBtn.addEventListener('click', async () => {
                         selectedNode.taskList = selectedNode.taskList.filter(t => t.id !== task.id);
                         nodeDerivedStatus(selectedNode); renderTaskList();
-                        
-                        // Force WebGL updates immediately
-                        createWebGLNode(selectedNode); 
-                        rebuildEdges();
-                        updateHelpList();
-
                         await updateNodeInDB(selectedNode.id, { taskList: selectedNode.taskList, status: selectedNode.status, needsHelp: selectedNode.needsHelp });
                     });
                     actionsContainer.appendChild(delBtn);
@@ -1089,25 +996,13 @@
         function renderChatMessages() {
             const container = document.getElementById('chat-messages-container'); container.innerHTML = '';
             if (!currentActiveTask) return;
-            
-            if (!currentActiveTask.comments || currentActiveTask.comments.length === 0) {
-                container.innerHTML = '<div class="text-center text-xs text-gray-500 my-auto">No discussion yet. Start the conversation.</div>';
-                return;
-            }
+            if (!currentActiveTask.comments || currentActiveTask.comments.length === 0) { container.innerHTML = '<div class="text-center text-xs text-gray-500 my-auto">No discussion yet. Start the conversation.</div>'; return; }
 
             const currentProfile = document.getElementById('profile-name').textContent;
-
             currentActiveTask.comments.forEach(msg => {
                 const isMe = msg.author === currentProfile;
-                const bubble = document.createElement('div');
-                bubble.className = `chat-bubble ${isMe ? 'me' : 'other'}`;
-                bubble.innerHTML = `
-                    <div class="chat-text">${msg.text}</div>
-                    <div class="chat-meta">
-                        <span class="chat-author">${msg.author}</span>
-                        <span>${msg.time}</span>
-                    </div>
-                `;
+                const bubble = document.createElement('div'); bubble.className = `chat-bubble ${isMe ? 'me' : 'other'}`;
+                bubble.innerHTML = `<div class="chat-text">${msg.text}</div><div class="chat-meta"><span class="chat-author">${msg.author}</span><span>${msg.time}</span></div>`;
                 container.appendChild(bubble);
             });
             container.scrollTop = container.scrollHeight;
@@ -1117,16 +1012,8 @@
             currentActiveTask = task;
             document.getElementById('chat-task-title').textContent = task.text;
             renderChatMessages();
-            
-            const chatForm = document.getElementById('chat-form');
-            const readonlyMsg = document.getElementById('chat-readonly-msg');
-            
-            if (selectedNode.isArchived) {
-                chatForm.style.display = 'none'; readonlyMsg.style.display = 'block';
-            } else {
-                chatForm.style.display = 'flex'; readonlyMsg.style.display = 'none';
-                setTimeout(() => document.getElementById('chat-input').focus(), 100);
-            }
+            const chatForm = document.getElementById('chat-form'); const readonlyMsg = document.getElementById('chat-readonly-msg');
+            if (selectedNode.isArchived) { chatForm.style.display = 'none'; readonlyMsg.style.display = 'block'; } else { chatForm.style.display = 'flex'; readonlyMsg.style.display = 'none'; setTimeout(() => document.getElementById('chat-input').focus(), 100); }
             chatModal.style.display = 'flex';
         }
 
@@ -1136,18 +1023,9 @@
             const input = document.getElementById('chat-input'); const text = input.value.trim();
             if (text) {
                 if (!currentActiveTask.comments) currentActiveTask.comments = [];
-                currentActiveTask.comments.push({
-                    text: text,
-                    author: document.getElementById('profile-name').textContent || 'System',
-                    time: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
-                });
-                
-                currentActiveTask.lastModified = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-                currentActiveTask.lastModifiedBy = document.getElementById('profile-name').textContent || 'System';
-                
-                input.value = ''; renderChatMessages(); renderTaskList();
-                logAction('EDIT', `Posted comment to task in "${selectedNode.name}"`);
-                
+                currentActiveTask.comments.push({ text: text, author: document.getElementById('profile-name').textContent, time: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) });
+                currentActiveTask.lastModified = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }); currentActiveTask.lastModifiedBy = document.getElementById('profile-name').textContent;
+                input.value = ''; renderChatMessages(); renderTaskList(); logAction('EDIT', `Posted comment to task in "${selectedNode.name}"`);
                 await updateNodeInDB(selectedNode.id, { taskList: selectedNode.taskList });
             }
         });
@@ -1229,13 +1107,11 @@
             labelDiv.appendChild(boxDiv); labelsContainer.appendChild(labelDiv); node.htmlLabel = labelDiv;
         }
 
-        // Factory function for pure data
         function createNodeData(id, parentId, type, name, description, color, x, y) {
-            let charge = type === 'core' ? -3000 : (type === 'dept' ? -1200 : -500); 
             return {
-                id, parentId, type, name, description, color, x, y, charge,
+                id, parentId, type, name, description, color, x, y,
                 status: type === 'note' ? 'New' : null, startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
-                createdBy: document.getElementById('profile-name') ? (document.getElementById('profile-name').textContent || 'System') : 'System', 
+                createdBy: document.getElementById('profile-name').textContent || 'System', 
                 createdAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
             };
         }
@@ -1263,30 +1139,36 @@
             requestAnimationFrame(render); if (!isAppStarted) return;
             const time = clock.getElapsedTime();
 
-            // Physics (Calculated purely locally based on DB anchor points)
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const n1 = nodes[i]; const n2 = nodes[j];
-                    if (isHiddenNode(n1) || isHiddenNode(n2)) continue;
-                    const dx = n2.x - n1.x; const dy = n2.y - n1.y; let dist = Math.hypot(dx, dy); if (dist === 0) dist = 0.1;
-                    if (dist < 600) { const force = (n1.charge * n2.charge) / (dist * dist * 50); const fx = (dx / dist) * force; const fy = (dy / dist) * force; n1.vx -= fx; n1.vy -= fy; n2.vx += fx; n2.vy += fy; }
-                }
-            }
-            edges.forEach(edge => {
-                if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
-                let targetDist = edge.source.type === 'core' ? 450 : (edge.source.type === 'dept' ? 180 : 90);
-                const dx = edge.target.x - edge.source.x; const dy = edge.target.y - edge.source.y; const dist = Math.hypot(dx, dy);
-                const force = (dist - targetDist) * 0.05; const fx = (dx / dist) * force; const fy = (dy / dist) * force;
-                edge.source.vx += fx; edge.source.vy += fy; edge.target.vx -= fx; edge.target.vy -= fy;
-            });
-            const core = nodes.find(n => n.type === 'core'); if (core) { core.vx += (0 - core.x) * 0.08; core.vy += (0 - core.y) * 0.08; }
-            nodes.forEach(node => { if (!isHiddenNode(node)) { node.vx *= 0.85; node.vy *= 0.85; node.x += node.vx; node.y += node.vy; if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0); } });
+            // Spring Physics (Pulls towards deterministic anchor slots instead of chaotic repulsion)
+            nodes.forEach(node => {
+                if (isHiddenNode(node) || node.anchorX === undefined) return;
+                
+                // Add a deterministic, organic wobble based on time and node ID
+                const charCode1 = node.id.charCodeAt(0) || 0;
+                const charCode2 = node.id.charCodeAt(node.id.length - 1) || 0;
+                const wobbleX = Math.sin(time * 0.4 + charCode1) * 20;
+                const wobbleY = Math.cos(time * 0.3 + charCode2) * 20;
+                
+                const targetX = node.anchorX + wobbleX;
+                const targetY = node.anchorY + wobbleY;
 
-            // Camera & BG
+                // Gentle spring pulling node towards its target
+                node.vx += (targetX - node.x) * 0.03;
+                node.vy += (targetY - node.y) * 0.03;
+
+                // Dampening to prevent infinite springing
+                node.vx *= 0.85;
+                node.vy *= 0.85;
+
+                node.x += node.vx;
+                node.y += node.vy;
+
+                if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0);
+            });
+
             if (targetCameraPos) { camera.position.lerp(targetCameraPos, 0.08); if (camera.position.distanceTo(targetCameraPos) < 1) targetCameraPos = null; updateContextMenuPos(); }
             if (backgroundGroup) { backgroundGroup.rotation.z = time * 0.015; backgroundGroup.rotation.y = Math.sin(time * 0.01) * 0.1; }
 
-            // Edges Animation
             let edgeIdx = 0; let sharedGeo = null; linesGroup.children.forEach(c => { if(c.userData.isEnergyStream) sharedGeo = c.geometry; });
             if (sharedGeo) {
                 const pos = sharedGeo.attributes.position.array; const col = sharedGeo.attributes.color.array;
@@ -1313,7 +1195,6 @@
                 sharedGeo.attributes.position.needsUpdate = true; sharedGeo.attributes.color.needsUpdate = true;
             }
 
-            // Labels & Visibility
             const tempV = new THREE.Vector3();
             nodes.forEach(node => {
                 const isHover = node === hoveredNode; const isSelect = node === selectedNode;
@@ -1432,18 +1313,13 @@
                 selectedNode.taskList.push({ 
                     id: Date.now(), text: text, done: false,
                     lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
-                    lastModifiedBy: document.getElementById('profile-name').textContent || 'System', comments: []
+                    lastModifiedBy: document.getElementById('profile-name').textContent, comments: []
                 });
                 input.value = ''; 
                 nodeDerivedStatus(selectedNode); 
                 renderTaskList(); 
                 logAction('EDIT', `Added task to "${selectedNode.name}"`);
                 
-                // Force WebGL updates immediately
-                createWebGLNode(selectedNode); 
-                rebuildEdges();
-                updateHelpList();
-
                 // Save to Cloud
                 await updateNodeInDB(selectedNode.id, {
                     taskList: selectedNode.taskList,
@@ -1478,29 +1354,21 @@
         const deptSelect = document.getElementById('edit-profile-dept');
         
         document.getElementById('profile-widget').addEventListener('click', () => {
-            // Dynamically populate department dropdown based on existing clusters
             deptSelect.innerHTML = '<option value="Unassigned">Unassigned</option>';
             const existingDepts = [...new Set(nodes.filter(n => n.type === 'dept' && !n.isArchived).map(n => n.name))].sort();
             existingDepts.forEach(deptName => { 
-                const opt = document.createElement('option'); 
-                opt.value = deptName; 
-                opt.textContent = deptName; 
-                deptSelect.appendChild(opt); 
+                const opt = document.createElement('option'); opt.value = deptName; opt.textContent = deptName; deptSelect.appendChild(opt); 
             });
 
             document.getElementById('edit-profile-name').value = document.getElementById('profile-name').textContent;
-            
             const currentDept = document.getElementById('profile-dept').textContent;
-            if (existingDepts.includes(currentDept) || currentDept === 'Unassigned') {
-                deptSelect.value = currentDept;
-            } else {
-                deptSelect.value = 'Unassigned';
-            }
+            if (existingDepts.includes(currentDept) || currentDept === 'Unassigned') { deptSelect.value = currentDept; } 
+            else { deptSelect.value = 'Unassigned'; }
 
             document.getElementById('profile-modal').style.display = 'flex';
         });
 
-        document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
+        document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const newName = document.getElementById('edit-profile-name').value.trim();
             const newDept = document.getElementById('edit-profile-dept').value;
@@ -1511,21 +1379,24 @@
             document.getElementById('profile-dept').textContent = newDept;
             logAction('PROFILE', `Identity updated: ${newName} [${newDept}]`);
             document.getElementById('profile-modal').style.display = 'none';
+
+            // SAVE PROFILE TO PRIVATE FIRESTORE PATH
+            if (!isTestMode && userId) {
+                const userProfileRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data');
+                try {
+                    await setDoc(userProfileRef, { nickname: newName, department: newDept }, { merge: true });
+                } catch(e) { console.error("Error saving profile", e); }
+            }
         });
 
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
                 logAction('SYSTEM', 'Severing link to the neural collective...');
-                try {
-                    await signOut(auth);
-                } catch (error) {
-                    console.error("Disconnect error", error);
-                }
+                try { await signOut(auth); } catch (error) { console.error("Disconnect error", error); }
                 setTimeout(() => window.location.reload(), 600);
             });
         }
 
-        // --- CONTEXT MENU (ADD / EDIT) ---
         ctxAddBtn.addEventListener('click', () => {
             if(!selectedNode) return;
             document.getElementById('add-name').value = ''; document.getElementById('add-desc').value = '';
@@ -1559,9 +1430,8 @@
                     name: name,
                     description: desc,
                     color: color,
-                    x: selectedNode.x + 50,
+                    x: selectedNode.x + 50, // Spawn locally near parent, will instantly glide to exact deterministic anchor slot
                     y: selectedNode.y + 50,
-                    charge: type === 'core' ? -3000 : (type === 'dept' ? -1200 : -500),
                     status: type === 'note' ? 'New' : null,
                     startDate: '', endDate: '', taskList: [], needsHelp: false, isArchived: false,
                     createdBy: document.getElementById('profile-name').textContent || 'System',
@@ -1646,10 +1516,8 @@
             if(!selectedNode) return; 
             logAction('ARCHIVE', `Node "${selectedNode.name}" archived`);
             document.getElementById('confirm-archive-modal').style.display = 'none'; 
-            
             const idToArchive = selectedNode.id;
             selectedNode = null; contextMenu.style.display = 'none'; 
-            
             await setArchiveStatusDB(idToArchive, true);
         });
 
@@ -1709,10 +1577,7 @@
                 let current = nodes.find(n => n.id === id);
                 while (current.parentId) { 
                     const parent = nodes.find(n => n.id === current.parentId); 
-                    if (parent && parent.isArchived) { 
-                        await updateNodeInDB(parent.id, { isArchived: false });
-                        current = parent; 
-                    } else break; 
+                    if (parent && parent.isArchived) { await updateNodeInDB(parent.id, { isArchived: false }); current = parent; } else break; 
                 }
                 setTimeout(populateArchiveModal, 500);
             }
@@ -1802,9 +1667,22 @@
                     userId = user.uid;
                     logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
                     
-                    const nickname = email.split('@')[0]; 
+                    // FETCH PRIVATE PROFILE FROM DATABASE
+                    const userProfileRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data');
+                    const profileSnap = await getDoc(userProfileRef);
+                    
+                    let nickname = email.split('@')[0];
+                    let dept = 'Unassigned';
+                    
+                    if (profileSnap.exists()) {
+                        const pData = profileSnap.data();
+                        if (pData.nickname) nickname = pData.nickname;
+                        if (pData.department) dept = pData.department;
+                    }
+
                     document.getElementById('profile-name').textContent = nickname; 
                     document.getElementById('profile-avatar').textContent = nickname.charAt(0).toUpperCase();
+                    document.getElementById('profile-dept').textContent = dept;
 
                     // 1. Start Live Snapshot Sync
                     startRealtimeSync();
