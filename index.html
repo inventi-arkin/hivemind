@@ -98,20 +98,68 @@
         /* HUD Widgets */
         .hud-widget { position: absolute; z-index: 100; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); pointer-events: auto; }
         
-        #view-options-widget { top: 20px; left: 20px; padding: 10px 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.3s; }
-        #view-options-widget:hover { background: rgba(255, 255, 255, 0.1); }
+        /* View Settings Widget (Top Center) */
+        #view-settings-widget { top: 20px; left: 50%; transform: translateX(-50%); padding: 10px 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; z-index: 102; }
+        #view-settings-widget:hover { background: rgba(255, 255, 255, 0.1); }
         
-        #view-options-menu {
-            position: absolute; top: 65px; left: 20px; z-index: 100; width: 280px;
+        #view-settings-menu {
+            position: absolute; top: 65px; left: 50%; transform: translateX(-50%); z-index: 102; width: 220px;
             background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px;
             padding: 15px; display: none; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto;
         }
+
+        /* Unified Morphing Dashboard */
+        #dashboard-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 95; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        #dashboard-backdrop.active { opacity: 1; pointer-events: auto; }
+        
+        #unified-dashboard {
+            position: fixed; top: 20px; left: 20px; width: 140px; height: 44px; z-index: 105;
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            display: flex; flex-direction: column; overflow: hidden; pointer-events: auto;
+        }
+        #unified-dashboard:hover:not(.expanded) { background: rgba(255, 255, 255, 0.1); cursor: pointer; border-color: rgba(6, 182, 212, 0.4); }
+        
+        #unified-dashboard.expanded {
+            top: 0; left: 0; width: 380px; max-width: 90vw; height: 100vh;
+            border-radius: 0; border: none; border-right: 1px solid rgba(6, 182, 212, 0.3);
+            background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(30px);
+            box-shadow: 10px 0 30px rgba(0,0,0,0.8);
+            cursor: default;
+        }
+
+        .dash-collapsed-header {
+            display: flex; align-items: center; gap: 12px; padding: 10px 15px; height: 44px; min-height: 44px;
+            transition: padding 0.4s;
+        }
+        #unified-dashboard.expanded .dash-collapsed-header {
+            padding: 20px 20px 10px 20px; height: auto; min-height: 60px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        #dashboard-expanded-content { display: none; flex-direction: column; flex-grow: 1; overflow: hidden; opacity: 0; transition: opacity 0.3s; }
+        #unified-dashboard.expanded #dashboard-expanded-content { display: flex; opacity: 1; transition-delay: 0.2s; }
+
+        .dash-content { padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 24px; }
+        .dash-section-title { font-size: 0.65rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .dash-badge { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; font-size: 0.55rem; color: white; }
+        .dash-list { display: flex; flex-direction: column; gap: 8px; }
+        .dash-item { 
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;
+            cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .dash-item:hover { background: rgba(255,255,255,0.08); border-color: rgba(6, 182, 212, 0.4); transform: translateX(4px); }
+        .dash-item-title { font-size: 0.8rem; font-weight: bold; color: white; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; }
+        .dash-item-path { font-size: 0.55rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-item.critical { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
+        .dash-item.critical:hover { border-color: rgba(239, 68, 68, 0.8); background: rgba(239, 68, 68, 0.15); }
+        .dash-item.progress { border-color: rgba(245, 158, 11, 0.2); }
         
         .search-container { position: relative; margin-bottom: 8px; }
         #search-input { width: 100%; padding: 8px 12px 8px 30px; font-size: 0.75rem; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; outline: none; transition: border-color 0.2s; }
         #search-input:focus { border-color: rgba(6, 182, 212, 0.8); box-shadow: 0 0 10px rgba(6, 182, 212, 0.2); }
         .search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: rgba(255,255,255,0.5); pointer-events: none; }
-        #search-results { display: none; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; }
+        #search-results { display: none; flex-direction: column; gap: 4px; overflow-y: auto; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; }
         .search-result-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; gap: 2px; }
         .search-result-item:hover { background: rgba(6, 182, 212, 0.2); }
         .search-result-name { font-size: 0.75rem; font-weight: bold; color: white; }
@@ -142,17 +190,22 @@
         .action-btn svg { width: 14px; height: 14px; fill: white; pointer-events: none; }
 
         /* Action Checklists */
-        .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
-        .task-item:hover { background: rgba(255,255,255,0.08); }
-        .task-checkbox { appearance: none; width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 3px; background: transparent; cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+        .task-item { display: flex; flex-direction: column; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; position: relative; }
+        .task-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+        
+        .task-row-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+        
+        .task-checkbox { appearance: none; width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 3px; background: transparent; cursor: pointer; flex-shrink: 0; }
         .task-checkbox:checked { background: #ec4899; border-color: #ec4899; position: relative; }
         .task-checkbox:checked::after { content: '✔'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 9px; }
         .task-checkbox:disabled { opacity: 0.5; cursor: not-allowed; }
-        .task-text { font-size: 0.75rem; color: #e5e7eb; flex-grow: 1; line-height: 1.3; word-break: break-word; transition: color 0.2s; }
-        .task-text.done { text-decoration: line-through; color: #6b7280; }
-        .task-meta { font-size: 0.55rem; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
         
-        .task-actions { display: flex; gap: 4px; opacity: 0.5; transition: opacity 0.2s; }
+        .task-text { font-size: 0.8rem; font-weight: 500; color: #e5e7eb; flex-grow: 1; line-height: 1.2; word-break: break-word; transition: color 0.2s; }
+        .task-text.done { text-decoration: line-through; color: #6b7280; }
+        
+        .task-meta { font-size: 0.55rem; color: #64748b; margin-top: 4px; padding-left: 24px; display: flex; align-items: center; gap: 6px; }
+        
+        .task-actions { display: flex; gap: 8px; opacity: 0.5; transition: opacity 0.2s; flex-shrink: 0; }
         .task-item:hover .task-actions { opacity: 1; }
         .task-btn { background: none; border: none; cursor: pointer; padding: 2px; border-radius: 4px; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
         .task-btn:hover { background: rgba(255,255,255,0.1); }
@@ -205,17 +258,15 @@
         .breadcrumb-item:hover { color: #ec4899; text-decoration: underline; }
         .breadcrumb-separator { color: #6b7280; margin: 0 6px; }
 
-        /* --- Dual Tab Logs Widget --- */
+        /* --- Action Logs Widget --- */
         #action-logs-widget { bottom: 20px; right: 20px; width: 340px; display: flex; flex-direction: column; padding: 0; overflow: hidden; transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); height: 44px; }
         #action-logs-widget.expanded { height: 300px; }
-        .log-tabs { display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0,0,0,0.4); }
-        .log-tab-btn { flex: 1; padding: 12px 10px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; cursor: pointer; text-align: center; border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .log-tab-btn:hover { color: white; background: rgba(255,255,255,0.05); }
-        .log-tab-btn.active { color: #06b6d4; border-bottom-color: #06b6d4; background: rgba(6, 182, 212, 0.1); }
-        .log-tab-btn.active-help { color: #ef4444; border-bottom-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-        .badge { font-size: 0.55rem; padding: 2px 6px; border-radius: 10px; color: white; display: none; transition: transform 0.2s; }
-        #sys-badge { background: #06b6d4; }
-        #help-badge { background: #ef4444; }
+        .log-header-btn { display: flex; align-items: center; justify-content: space-between; padding: 0 15px; height: 44px; min-height: 44px; background: rgba(0,0,0,0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #06b6d4; cursor: pointer; transition: all 0.2s; flex-shrink: 0; pointer-events: auto; }
+        .log-header-btn:hover { background: rgba(6, 182, 212, 0.2); }
+        .chevron-icon { transition: transform 0.3s; }
+        #action-logs-widget.expanded .chevron-icon { transform: rotate(180deg); }
+
+        .badge { font-size: 0.55rem; padding: 2px 6px; border-radius: 10px; color: white; display: none; transition: transform 0.2s; background: #06b6d4; }
         
         .logs-panel { flex-grow: 1; padding: 10px 15px; overflow-y: auto; display: none; flex-direction: column; gap: 8px; }
         .logs-panel.active-panel { display: flex; }
@@ -230,12 +281,6 @@
         .log-tag.STATUS { color: #10b981; }
         .log-tag.VIEW { color: #64748b; }
         .log-tag.ARCHIVE { color: #f43f5e; }
-        
-        .help-entry { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-        .help-entry:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); transform: translateX(-2px); }
-        .help-path { font-size: 0.55rem; color: #fca5a5; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; word-break: break-all; }
-        .help-name { font-size: 0.75rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 6px; }
-        .help-icon { background: #ef4444; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
@@ -316,21 +361,6 @@
         </div>
     </div>
 
-    <!-- Custom Auth Modal -->
-    <div id="auth-modal" class="interactive fixed inset-0 z-[200] hidden items-center justify-center bg-black/80 backdrop-blur-md">
-        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-center">
-            <h2 class="text-xl font-bold mb-4 tracking-[0.1em] text-white">GOOGLE AUTH</h2>
-            <p class="text-xs text-gray-300 mb-6">Simulation: Enter your workspace email.</p>
-            <form id="auth-form" class="space-y-4 text-left">
-                <input type="email" id="auth-email-input" placeholder="user@inventi.ph" class="glass-input w-full px-3 py-2 text-sm rounded-lg" required>
-                <div class="flex space-x-4 mt-6">
-                    <button type="button" onclick="document.getElementById('auth-modal').style.display='none'" class="glass-input w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CANCEL</button>
-                    <button type="submit" class="glass-button w-1/2 py-2 rounded-lg text-white text-xs font-bold cursor-pointer">CONTINUE</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="home-view">
         <!-- 3D Engine Output -->
         <div id="webgl-container"></div>
@@ -341,24 +371,15 @@
             <!-- HTML Labels Container (Synchronized with 3D space) -->
             <div id="labels-container" class="absolute inset-0 z-[5]"></div>
 
-            <!-- View Options & Search -->
-            <div id="view-options-widget" class="hud-widget">
-                <div class="atom-logo small">
-                    <div class="nucleus"></div>
-                    <div class="electron-ring ring-1"><div class="electron"></div></div>
-                    <div class="electron-ring ring-2"><div class="electron"></div></div>
-                    <div class="electron-ring ring-3"><div class="electron"></div></div>
-                </div>
-                <span class="text-xs font-bold tracking-widest text-white pointer-events-none">HIVE MIND</span>
+            <!-- Top Center View Settings Widget (Eye Icon) -->
+            <div id="view-settings-widget" class="hud-widget" title="Network View Settings">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
             </div>
 
-            <div id="view-options-menu">
-                <div class="search-container">
-                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="text" id="search-input" placeholder="Search neural network..." autocomplete="off">
-                </div>
-                <div id="search-results"></div>
-                <div class="w-full h-px bg-white/10 my-1"></div>
+            <div id="view-settings-menu">
                 <label class="toggle-row">
                     <span>Show Labels</span>
                     <input type="checkbox" id="toggle-labels-checkbox" class="custom-checkbox" checked>
@@ -369,6 +390,38 @@
                 </label>
                 <div class="w-full h-px bg-white/10 my-1"></div>
                 <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
+            </div>
+
+            <!-- Unified Dashboard & Hive Mind Toggle -->
+            <div id="dashboard-backdrop"></div>
+            <div id="unified-dashboard">
+                <!-- Collapsed state header -->
+                <div id="dashboard-toggle-btn" class="dash-collapsed-header">
+                    <div class="atom-logo small flex-shrink-0">
+                        <div class="nucleus"></div>
+                        <div class="electron-ring ring-1"><div class="electron"></div></div>
+                        <div class="electron-ring ring-2"><div class="electron"></div></div>
+                        <div class="electron-ring ring-3"><div class="electron"></div></div>
+                    </div>
+                    <span class="text-xs font-bold tracking-widest text-white pointer-events-none whitespace-nowrap">HIVE MIND</span>
+                    <button id="close-dashboard-btn" class="ml-auto text-gray-400 hover:text-white transition-colors hidden pointer-events-auto z-10 p-2">✕</button>
+                </div>
+                
+                <!-- Expanded Content (Hidden when collapsed) -->
+                <div id="dashboard-expanded-content">
+                    <!-- Search -->
+                    <div class="px-5 py-3 border-b border-white/10 flex-shrink-0 pointer-events-auto">
+                        <div class="search-container mb-0">
+                            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <input type="text" id="search-input" placeholder="Search neural network..." autocomplete="off">
+                        </div>
+                        <div id="search-results" class="mt-2 bg-transparent border-none p-0 max-h-[150px] shadow-none pointer-events-auto"></div>
+                    </div>
+                    <!-- Task Overview -->
+                    <div class="dash-content pointer-events-auto" id="dashboard-content">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
             </div>
 
             <!-- Profile -->
@@ -382,19 +435,15 @@
 
             <!-- Action Logs Widget -->
             <div id="action-logs-widget" class="hud-widget">
-                <div class="log-tabs pointer-events-auto">
-                    <div class="log-tab-btn active" data-target="panel-sys" id="tab-sys-btn">
-                        System Logs <span id="sys-badge" class="badge">0</span>
+                <div class="log-header-btn" id="toggle-logs-btn">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                        <span>System Logs</span>
+                        <span id="sys-badge" class="badge">0</span>
                     </div>
-                    <div class="log-tab-btn" data-target="panel-help" id="tab-help-btn">
-                        Needs Help <span id="help-badge" class="badge">0</span>
-                    </div>
-                    <div class="px-3 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors" id="toggle-logs-btn">
-                        <svg class="w-4 h-4 text-gray-400 chevron-icon pointer-events-none" style="transition: transform 0.3s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
-                    </div>
+                    <svg class="w-4 h-4 chevron-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                 </div>
                 <div id="panel-sys" class="logs-panel active-panel"></div>
-                <div id="panel-help" class="logs-panel"></div>
             </div>
 
             <!-- Floating Context Menu -->
@@ -504,40 +553,40 @@
 
             <!-- View / Note Details Modal -->
             <div id="view-modal" class="interactive fixed inset-0 z-[120] hidden items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
-                <div class="glass-panel p-8 rounded-3xl w-full max-w-sm text-left">
-                    <div id="view-needs-help-banner" class="hidden mb-3 bg-red-500/20 text-red-400 border border-red-500/50 p-2 rounded text-xs font-bold text-center flex items-center justify-center gap-2">
+                <div class="glass-panel p-6 rounded-3xl w-full max-w-sm text-left flex flex-col max-h-[90vh]">
+                    <div id="view-needs-help-banner" class="shrink-0 hidden mb-2 bg-red-500/20 text-red-400 border border-red-500/50 py-1.5 px-2 rounded text-xs font-bold text-center flex items-center justify-center gap-2">
                         <div class="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">!</div> Node Requires Assistance
                     </div>
                     
-                    <div class="flex justify-between items-center mb-2">
-                        <h2 id="view-node-title" class="text-xl font-bold tracking-[0.1em] text-cyan-400">TITLE</h2>
-                        <span id="view-node-status" class="hidden text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase border"></span>
+                    <div class="shrink-0 flex justify-between items-center mb-1.5">
+                        <h2 id="view-node-title" class="text-xl font-bold tracking-[0.1em] text-cyan-400 truncate">TITLE</h2>
+                        <span id="view-node-status" class="hidden text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase border shrink-0 ml-2"></span>
                     </div>
                     
-                    <div id="view-dates-container" class="hidden flex gap-4 text-[9px] text-gray-400 mb-2 uppercase tracking-widest bg-white/5 p-2 rounded">
+                    <div id="view-dates-container" class="shrink-0 hidden flex gap-4 text-[9px] text-gray-400 mb-2 uppercase tracking-widest bg-white/5 py-1.5 px-3 rounded">
                         <div>START: <span id="view-start-date" class="text-cyan-400">--</span></div>
                         <div>END: <span id="view-end-date" class="text-pink-400">--</span></div>
                     </div>
 
-                    <div class="w-full h-px bg-white/20 mb-3"></div>
+                    <div class="shrink-0 w-full h-px bg-white/20 mb-2"></div>
                     
-                    <p id="view-node-desc" class="text-gray-300 text-sm mb-4 max-h-48 overflow-y-auto" style="white-space: pre-wrap;"></p>
+                    <p id="view-node-desc" class="shrink-0 text-gray-300 text-sm mb-3 max-h-24 overflow-y-auto" style="white-space: pre-wrap;"></p>
                     
-                    <div id="view-task-section" class="hidden flex-col gap-3 mb-4">
-                        <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action Items</h3>
-                        <div id="task-list-container" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1"></div>
-                        <form id="view-task-form" class="flex gap-2">
+                    <div id="view-task-section" class="hidden flex-col gap-2 mb-3 flex-grow min-h-0">
+                        <h3 class="shrink-0 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action Items</h3>
+                        <div id="task-list-container" class="flex-grow overflow-y-auto pr-1 flex flex-col gap-2"></div>
+                        <form id="view-task-form" class="shrink-0 flex gap-2 mt-1">
                             <input type="text" id="view-task-input" placeholder="Add new task..." class="glass-input flex-grow px-2 py-1.5 text-xs rounded" autocomplete="off">
                             <button type="submit" class="glass-button px-3 py-1.5 text-[10px] font-bold rounded">ADD</button>
                         </form>
                     </div>
 
-                    <div class="flex justify-between items-center text-[9px] text-gray-400 mb-6 uppercase tracking-widest border-t border-white/10 pt-4">
-                        <span id="view-node-creator">By: System</span>
-                        <span id="view-node-date">10/24/2023</span>
+                    <div class="shrink-0 flex justify-between items-center text-[9px] text-gray-400 mb-3 uppercase tracking-widest border-t border-white/10 pt-3">
+                        <span id="view-node-creator" class="truncate max-w-[60%]">By: System</span>
+                        <span id="view-node-date" class="shrink-0">10/24/2023</span>
                     </div>
 
-                    <button type="button" onclick="document.getElementById('view-modal').style.display='none'" class="glass-button w-full py-2 rounded-lg text-white text-xs font-bold tracking-widest cursor-pointer">CLOSE</button>
+                    <button type="button" onclick="document.getElementById('view-modal').style.display='none'" class="shrink-0 glass-button w-full py-2 rounded-lg text-white text-xs font-bold tracking-widest cursor-pointer">CLOSE</button>
                 </div>
             </div>
 
@@ -635,12 +684,14 @@
         const edges = [];
         let hoveredNode = null;
         let selectedNode = null; 
-        let currentActiveTask = null; // For Chat Modal
+        let currentActiveTask = null; 
         let showLabels = true;
         let hideDoneNodes = false;
         let isAppStarted = false;
         let targetCameraPos = null;
         let isTestMode = false;
+        let isDraggingCamera = false; 
+        let prevMousePos = { x: 0, y: 0 };
 
         // --- DOM ELEMENT CACHING ---
         // Views & Auth
@@ -656,12 +707,8 @@
         // Logs
         const logsWidget = document.getElementById('action-logs-widget');
         const panelSys = document.getElementById('panel-sys');
-        const panelHelp = document.getElementById('panel-help');
         const sysBadge = document.getElementById('sys-badge');
-        const helpBadge = document.getElementById('help-badge');
         const toggleLogsBtn = document.getElementById('toggle-logs-btn');
-        const tabSysBtn = document.getElementById('tab-sys-btn');
-        const tabHelpBtn = document.getElementById('tab-help-btn');
         let unreadSysLogs = 0;
 
         // Context Menu
@@ -673,12 +720,19 @@
         const ctxListBtn = document.getElementById('ctx-list-btn');
 
         // Modals & Forms
-        const viewOptionsMenu = document.getElementById('view-options-menu');
+        const viewSettingsMenu = document.getElementById('view-settings-menu');
+        const viewSettingsWidget = document.getElementById('view-settings-widget');
+        const unifiedDashboard = document.getElementById('unified-dashboard');
+        const dashboardToggleBtn = document.getElementById('dashboard-toggle-btn');
+        const closeDashboardBtn = document.getElementById('close-dashboard-btn');
+        const dashboardBackdrop = document.getElementById('dashboard-backdrop');
+        const dashboardContent = document.getElementById('dashboard-content');
         const searchInput = document.getElementById('search-input');
         const searchResults = document.getElementById('search-results');
         const chatModal = document.getElementById('chat-modal');
         const logoutBtn = document.getElementById('logout-btn');
 
+        // --- STREAMING_CHUNK:Initializing WebGL Environment ---
         // --- INITIALIZE THREE.JS ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color('#020205');
@@ -752,6 +806,7 @@
         const warpStars = new THREE.LineSegments(starGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending }));
         backgroundGroup.add(warpStars);
 
+        // --- STREAMING_CHUNK:Connecting to Firebase and Sync Engine ---
         // --- FIREBASE DATA & SYNC ENGINE ---
         async function initAuth() {
             try {
@@ -789,10 +844,13 @@
 
         async function pushNodeToDB(nodeData) {
             if (isTestMode) {
-                const node = sanitizeNode(nodeData);
-                nodes.push(node);
-                createWebGLNode(node);
-                rebuildEdges();
+                // Safeguard against ghost duplicate IDs during mock generation
+                if(!nodes.find(n => n.id === nodeData.id)) {
+                    const node = sanitizeNode(nodeData);
+                    nodes.push(node);
+                    createWebGLNode(node);
+                    rebuildEdges();
+                }
                 return;
             }
             if (!userId) return;
@@ -889,15 +947,15 @@
             
             function queueNode(nodeData) {
                 if (isLocal) {
-                    // Prevent duplicate injections if initialized rapidly multiple times
-                    if (nodes.some(n => n.id === nodeData.id)) return;
-                    
-                    const node = sanitizeNode(nodeData);
-                    nodes.push(node);
-                    createWebGLNode(node);
+                    // Prevent duplicate ghost nodes
+                    if(!nodes.find(n => n.id === nodeData.id)) {
+                        const node = { ...nodeData, vx: 0, vy: 0, threeGroup: null, htmlLabel: null, dustRef: null };
+                        nodes.push(node);
+                        createWebGLNode(node);
+                    }
                 } else {
                     const clean = { ...nodeData };
-                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy; delete clean.spawnProgress;
+                    delete clean.threeGroup; delete clean.htmlLabel; delete clean.dustRef; delete clean.vx; delete clean.vy;
                     batch.set(doc(nodesCollection, nodeData.id), clean);
                 }
             }
@@ -905,23 +963,25 @@
             const core = createNodeData('core', null, 'core', 'CORE', '', '#06b6d4', 0, 0); queueNode(core);
 
             for (let i = 0; i < departmentNames.length; i++) {
-                const angle = (Math.PI * 2 / departmentNames.length) * i; const distance = 400 + Math.random() * 100; const deptColor = colors[i % colors.length];
+                // Introduce massive organic offset to initial placement distances and angles
+                const angle = (Math.PI * 2 / departmentNames.length) * i + (Math.random() - 0.5) * 0.8; 
+                const distance = 450 + Math.random() * 250; 
+                const deptColor = colors[i % colors.length];
                 const dept = createNodeData(`dept-${i}`, core.id, 'dept', departmentNames[i], '', deptColor, Math.cos(angle) * distance, Math.sin(angle) * distance);
-                // Stagger spawn times based on distance
-                dept.spawnProgress = -Math.random() * 0.5;
                 queueNode(dept);
                 
                 const numTopics = 3 + Math.floor(Math.random() * 3);
                 for(let j = 0; j < numTopics; j++) {
-                    const tAngle = angle + (Math.random() - 0.5); const tDist = distance + 150 + Math.random() * 80;
+                    const tAngle = angle + (Math.random() * 1.5 - 0.75); 
+                    const tDist = distance + 120 + Math.random() * 180;
                     const topic = createNodeData(`dept-${i}-topic-${j}`, dept.id, 'topic', `Topic ${j+1}`, `Auto generated.`, deptColor, Math.cos(tAngle) * tDist, Math.sin(tAngle) * tDist);
-                    topic.spawnProgress = -Math.random() * 1.0;
                     queueNode(topic);
 
                     if(Math.random() > 0.3) {
                         const numNotes = 1 + Math.floor(Math.random() * 3);
                         for(let k=0; k<numNotes; k++) {
-                            const nAngle = tAngle + (Math.random() - 0.5); const nDist = tDist + 80;
+                            const nAngle = tAngle + (Math.random() * 1.2 - 0.6); 
+                            const nDist = tDist + 80 + Math.random() * 120;
                             const note = createNodeData(`topic-${j}-note-${k}`, topic.id, 'note', `Note ${k+1}`, ``, deptColor, Math.cos(nAngle) * nDist, Math.sin(nAngle) * nDist);
                             if (Math.random() > 0.8) note.needsHelp = true;
 
@@ -971,6 +1031,7 @@
             }
         }
 
+        // --- STREAMING_CHUNK:Defining Logic and State Management ---
         // --- CORE LOGIC ---
         function isHiddenNode(node) { 
             if (!node) return true;
@@ -1040,24 +1101,25 @@
 
             const depts = nodes.filter(n => n.type === 'dept');
             depts.forEach((dept, i) => {
-                const angle = (Math.PI * 2 / depts.length) * i;
-                const distance = 400;
+                // Break perfect symmetry in the re-arrangement map too
+                const angle = (Math.PI * 2 / depts.length) * i + (Math.random() - 0.5) * 0.5;
+                const distance = 450 + Math.random() * 150;
                 dept.x = Math.cos(angle) * distance;
                 dept.y = Math.sin(angle) * distance;
                 dept.vx = 0; dept.vy = 0;
 
                 const topics = nodes.filter(n => n.parentId === dept.id);
                 topics.forEach((topic, j) => {
-                    const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.4);
-                    const tDist = distance + 180;
+                    const tAngle = angle + ((j - (topics.length - 1) / 2) * 0.5) + (Math.random() - 0.5) * 0.3;
+                    const tDist = distance + 150 + Math.random() * 100;
                     topic.x = Math.cos(tAngle) * tDist;
                     topic.y = Math.sin(tAngle) * tDist;
                     topic.vx = 0; topic.vy = 0;
 
                     const childNotes = nodes.filter(n => n.parentId === topic.id);
                     childNotes.forEach((note, k) => {
-                        const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.3);
-                        const nDist = tDist + 100;
+                        const nAngle = tAngle + ((k - (childNotes.length - 1) / 2) * 0.4) + (Math.random() - 0.5) * 0.2;
+                        const nDist = tDist + 80 + Math.random() * 80;
                         note.x = Math.cos(nAngle) * nDist;
                         note.y = Math.sin(nAngle) * nDist;
                         note.vx = 0; note.vy = 0;
@@ -1088,7 +1150,7 @@
 
         document.getElementById('rearrange-btn').addEventListener('click', () => {
             rearrangeNetwork();
-            viewOptionsMenu.style.display = 'none';
+            viewSettingsMenu.style.display = 'none';
         });
 
         // --- TASK & CHAT RENDERERS ---
@@ -1099,6 +1161,8 @@
             selectedNode.taskList.forEach(task => {
                 const item = document.createElement('div'); item.className = 'task-item';
                 
+                const mainRow = document.createElement('div'); mainRow.className = 'task-row-main';
+
                 const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'task-checkbox';
                 checkbox.checked = task.done; checkbox.disabled = selectedNode.isArchived;
                 
@@ -1114,7 +1178,6 @@
                     // Force WebGL updates immediately
                     createWebGLNode(selectedNode); 
                     rebuildEdges();
-                    updateHelpList();
 
                     // Push to Cloud
                     await updateNodeInDB(selectedNode.id, {
@@ -1124,12 +1187,7 @@
                     });
                 });
                 
-                const textContainer = document.createElement('div'); textContainer.style.flexGrow = '1';
-                const span = document.createElement('span'); span.className = `task-text ${task.done ? 'done' : ''}`; span.textContent = task.text;
-                const metaSpan = document.createElement('span'); metaSpan.className = 'task-meta';
-                if (task.lastModified) metaSpan.textContent = `Updated: ${task.lastModified} by ${task.lastModifiedBy}`;
-                
-                textContainer.appendChild(span); textContainer.appendChild(metaSpan);
+                const textSpan = document.createElement('span'); textSpan.className = `task-text ${task.done ? 'done' : ''}`; textSpan.textContent = task.text;
                 
                 const actionsContainer = document.createElement('div'); actionsContainer.className = 'task-actions';
                 
@@ -1147,14 +1205,22 @@
                         // Force WebGL updates immediately
                         createWebGLNode(selectedNode); 
                         rebuildEdges();
-                        updateHelpList();
 
                         await updateNodeInDB(selectedNode.id, { taskList: selectedNode.taskList, status: selectedNode.status, needsHelp: selectedNode.needsHelp });
                     });
                     actionsContainer.appendChild(delBtn);
                 }
 
-                item.appendChild(checkbox); item.appendChild(textContainer); item.appendChild(actionsContainer);
+                mainRow.appendChild(checkbox);
+                mainRow.appendChild(textSpan);
+                mainRow.appendChild(actionsContainer);
+
+                const metaSpan = document.createElement('span'); metaSpan.className = 'task-meta';
+                if (task.lastModified) metaSpan.textContent = `Updated: ${task.lastModified} by ${task.lastModifiedBy}`;
+
+                item.appendChild(mainRow);
+                item.appendChild(metaSpan);
+                
                 container.appendChild(item);
             });
         }
@@ -1225,6 +1291,7 @@
             }
         });
 
+        // --- STREAMING_CHUNK:Constructing 3D Nodes and Particles ---
         // --- WEBGL DATA MANAGEMENT ---
         function createWebGLNode(node) {
             if(node.threeGroup) scene.remove(node.threeGroup); if(node.htmlLabel) node.htmlLabel.remove();
@@ -1337,9 +1404,30 @@
             }
         }
 
+        // --- STREAMING_CHUNK:Running Physical Render Loop ---
         function render() {
             requestAnimationFrame(render); if (!isAppStarted) return;
             const time = clock.getElapsedTime();
+
+            // Stars update
+            if (warpStars) {
+                const sPos = warpStars.geometry.attributes.position.array;
+                for(let i=0; i<starCount; i++) {
+                    sPos[i*6+2] += starVels[i];
+                    sPos[i*6+5] += starVels[i];
+                    if (sPos[i*6+2] > 2000) {
+                        const newZ = -2000 - Math.random() * 2000;
+                        const trail = sPos[i*6+2] - sPos[i*6+5];
+                        sPos[i*6+2] = newZ;
+                        sPos[i*6+5] = newZ - trail;
+                        const newX = (Math.random() - 0.5) * 4000;
+                        const newY = (Math.random() - 0.5) * 4000;
+                        sPos[i*6] = newX; sPos[i*6+3] = newX;
+                        sPos[i*6+1] = newY; sPos[i*6+4] = newY;
+                    }
+                }
+                warpStars.geometry.attributes.position.needsUpdate = true;
+            }
 
             // Physics (Calculated purely locally based on DB anchor points)
             for (let i = 0; i < nodes.length; i++) {
@@ -1350,42 +1438,33 @@
                     if (dist < 600) { const force = (n1.charge * n2.charge) / (dist * dist * 50); const fx = (dx / dist) * force; const fy = (dy / dist) * force; n1.vx -= fx; n1.vy -= fy; n2.vx += fx; n2.vy += fy; }
                 }
             }
-            edges.forEach(edge => {
+            edges.forEach((edge, eIdx) => {
                 if (isHiddenNode(edge.source) || isHiddenNode(edge.target)) return;
-                let targetDist = edge.source.type === 'core' ? 450 : (edge.source.type === 'dept' ? 180 : 90);
-                const dx = edge.target.x - edge.source.x; const dy = edge.target.y - edge.source.y; const dist = Math.hypot(dx, dy);
-                const force = (dist - targetDist) * 0.05; const fx = (dx / dist) * force; const fy = (dy / dist) * force;
+                const variance = ((eIdx * 17) % 40) - 20; 
+                let targetDist = edge.source.type === 'core' ? 550 + variance*3 : (edge.source.type === 'dept' ? 220 + variance*1.5 : 100 + variance);
+                const dx = edge.target.x - edge.source.x; const dy = edge.target.y - edge.source.y; let dist = Math.hypot(dx, dy); if (dist === 0) dist = 0.1;
+                const force = (dist - targetDist) * 0.02; // Softened tension
+                const fx = (dx / dist) * force; const fy = (dy / dist) * force;
                 edge.source.vx += fx; edge.source.vy += fy; edge.target.vx -= fx; edge.target.vy -= fy;
             });
             const core = nodes.find(n => n.type === 'core'); if (core) { core.vx += (0 - core.x) * 0.08; core.vy += (0 - core.y) * 0.08; }
-            nodes.forEach(node => { if (!isHiddenNode(node)) { node.vx *= 0.85; node.vy *= 0.85; node.x += node.vx; node.y += node.vy; if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0); } });
-
-            // Camera & Warp BG
-            if (targetCameraPos) { camera.position.lerp(targetCameraPos, 0.08); if (camera.position.distanceTo(targetCameraPos) < 1) targetCameraPos = null; updateContextMenuPos(); }
-            if (backgroundGroup) { backgroundGroup.rotation.z = time * 0.005; }
-            
-            // Animate Star Trails
-            if (warpStars) {
-                const sPos = warpStars.geometry.attributes.position.array;
-                for(let i=0; i<starCount; i++) {
-                    const speed = starVels[i];
-                    sPos[i*6+2] += speed; // Move head Z
-                    sPos[i*6+5] += speed; // Move tail Z
-                    
-                    // Reset if it flies past the camera to create infinite loop
-                    if (sPos[i*6+2] > camera.position.z + 500) {
-                        const trail = sPos[i*6+2] - sPos[i*6+5];
-                        sPos[i*6+2] = camera.position.z - 3000;
-                        sPos[i*6+5] = (camera.position.z - 3000) - trail;
-                        // Randomize X/Y on reset so pattern never looks repeating
-                        const newX = (Math.random() - 0.5) * 4000;
-                        const newY = (Math.random() - 0.5) * 4000;
-                        sPos[i*6] = newX; sPos[i*6+3] = newX;
-                        sPos[i*6+1] = newY; sPos[i*6+4] = newY;
+            nodes.forEach(node => { 
+                if (!isHiddenNode(node)) { 
+                    if (node.type !== 'core') {
+                        const driftAngle = Math.atan2(node.y, node.x) + (Math.PI / 2); 
+                        node.vx += Math.cos(driftAngle) * 0.02; // Reduced from 0.15
+                        node.vy += Math.sin(driftAngle) * 0.02; // Reduced from 0.15
+                        node.vx += Math.cos(time * 0.2 + node.x * 0.01) * 0.015; // Reduced from 0.1
+                        node.vy += Math.sin(time * 0.2 + node.y * 0.01) * 0.015; // Reduced from 0.1
                     }
-                }
-                warpStars.geometry.attributes.position.needsUpdate = true;
-            }
+                    node.vx *= 0.85; node.vy *= 0.85; node.x += node.vx; node.y += node.vy; 
+                    if(node.threeGroup) node.threeGroup.position.set(node.x, node.y, 0); 
+                } 
+            });
+
+            // Camera & BG
+            if (targetCameraPos) { camera.position.lerp(targetCameraPos, 0.08); if (camera.position.distanceTo(targetCameraPos) < 1) targetCameraPos = null; updateContextMenuPos(); }
+            if (backgroundGroup) { backgroundGroup.rotation.z = time * 0.015; backgroundGroup.rotation.y = Math.sin(time * 0.01) * 0.1; }
 
             // Edges Animation
             let edgeIdx = 0; let sharedGeo = null; linesGroup.children.forEach(c => { if(c.userData.isEnergyStream) sharedGeo = c.geometry; });
@@ -1398,15 +1477,28 @@
                     const nx = dist === 0 ? 0 : -dy / dist; const ny = dist === 0 ? 0 : dx / dist;  
                     const baseColor = new THREE.Color((edge.target.needsHelp && edge.target.status !== 'Done') ? '#ef4444' : edge.target.color);
                     
+                    const curveOffsetMag = dist * 0.35 * (edgeIdx % 2 === 0 ? 1 : -1); 
+                    const curveOffset = curveOffsetMag * (0.6 + 0.4 * Math.sin(time * 0.3 + edgeIdx * 2));
+                    const midX = edge.source.x + dx * 0.5;
+                    const midY = edge.source.y + dy * 0.5;
+                    const cpX = midX + nx * curveOffset;
+                    const cpY = midY + ny * curveOffset;
+                    
                     for(let i=0; i<POINTS; i++) {
                         const t = i / (POINTS - 1);
-                        const sway = Math.sin(time * 0.15 + edgeIdx) * (dist * 0.08);
-                        const cx = edge.source.x + dx * t + nx * sway * Math.sin(t * Math.PI);
-                        const cy = edge.source.y + dy * t + ny * sway * Math.sin(t * Math.PI);
-                        const fSpeed = time * 0.35; 
-                        const noise = ((Math.sin(t * 15 - fSpeed + edgeIdx) * (dist * 0.04)) + (Math.sin(t * 28 - fSpeed * 1.5) * (dist * 0.02))) * Math.sin(t * Math.PI); 
-                        pos[pIdx++] = cx + nx * noise; pos[pIdx++] = cy + ny * noise; pos[pIdx++] = -1;
+                        const mt = 1 - t;
+                        const cx = mt * mt * edge.source.x + 2 * mt * t * cpX + t * t * edge.target.x;
+                        const cy = mt * mt * edge.source.y + 2 * mt * t * cpY + t * t * edge.target.y;
+                        const fSpeed = time * 0.6; 
+                        const ripple = Math.sin(t * 20 - fSpeed + edgeIdx) * (dist * 0.03) * Math.sin(t * Math.PI); 
+                        pos[pIdx++] = cx + nx * ripple; pos[pIdx++] = cy + ny * ripple; pos[pIdx++] = -1;
                         let intensity = (0.10 + Math.max(0, (Math.sin(t * 25 - fSpeed * 0.9) * 0.5 + Math.sin(t * 12 - fSpeed * 0.4) * 0.5)) * 0.70) * Math.pow(Math.sin(t * Math.PI), 0.5); 
+                        if (edge.source.type === 'core') {
+                            if (t < 0.3) {
+                                const coreBoost = Math.pow(1.0 - (t / 0.3), 2.0) * 0.6; 
+                                intensity += coreBoost;
+                            }
+                        }
                         col[cIdx++] = baseColor.r * intensity; col[cIdx++] = baseColor.g * intensity; col[cIdx++] = baseColor.b * intensity;
                     }
                     edgeIdx++;
@@ -1444,7 +1536,12 @@
                 }
 
                 if (node.dustRef) node.dustRef.rotation.z -= (node.type === 'core' ? 0.0005 : 0.0015);
-                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.7 + Math.sin(time * 2 + node.x) * 0.15;
+                
+                // Create a smooth, deep breathing glow. We use a stable offset (from the node's ID) 
+                // instead of its live 'node.x' coordinate to prevent erratic flickering while it drifts.
+                const stablePhase = node.id ? node.id.charCodeAt(node.id.length - 1) : 0;
+                if (node.auraSprite) node.auraSprite.material.opacity = (isSelect || isHover) ? 1.0 : 0.65 + Math.sin(time * 0.7 + stablePhase) * 0.25;
+                
                 if (node.htmlLabel) {
                     tempV.set(node.x, node.y, 0).project(camera);
                     const screenX = (tempV.x * .5 + .5) * window.innerWidth; const screenY = (tempV.y * -.5 + .5) * window.innerHeight;
@@ -1464,8 +1561,8 @@
             renderer.render(scene, camera);
         }
 
+        // --- STREAMING_CHUNK:Attaching User Inputs and Listeners ---
         // --- INTERACTION ---
-        let isDraggingCamera = false; let prevMousePos = { x: 0, y: 0 };
         container.addEventListener('mousedown', (e) => {
             if (homeView.style.display === 'none') return;
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1476,7 +1573,7 @@
                 if (clickedNode) { selectedNode = clickedNode; updateContextMenu(); }
             } else {
                 isDraggingCamera = true; prevMousePos = { x: e.clientX, y: e.clientY };
-                selectedNode = null; contextMenu.style.display = 'none'; viewOptionsMenu.style.display = 'none'; targetCameraPos = null;
+                selectedNode = null; contextMenu.style.display = 'none'; viewSettingsMenu.style.display = 'none'; targetCameraPos = null;
             }
         });
         window.addEventListener('mousemove', (e) => {
@@ -1548,7 +1645,7 @@
             }
             updateViewModalStatusDisplay(node);
             document.getElementById('view-modal').style.display = 'flex';
-            viewOptionsMenu.style.display = 'none';
+            viewSettingsMenu.style.display = 'none';
         }
 
         ctxInfoBtn.addEventListener('click', () => { if(selectedNode && selectedNode.type !== 'core') openViewModal(selectedNode); });
@@ -1580,11 +1677,146 @@
             }
         });
 
-        // --- SEARCH ENGINE ---
-        document.getElementById('view-options-widget').addEventListener('click', () => {
-            viewOptionsMenu.style.display = viewOptionsMenu.style.display === 'flex' ? 'none' : 'flex';
-            if (viewOptionsMenu.style.display === 'flex') searchInput.focus();
+        // --- STREAMING_CHUNK:Constructing Dashboard and Search Flow ---
+        // --- SEARCH ENGINE & DASHBOARD ---
+        function toggleDashboard() {
+            const isExpanded = unifiedDashboard.classList.contains('expanded');
+            if (isExpanded) {
+                unifiedDashboard.classList.remove('expanded');
+                dashboardBackdrop.classList.remove('active');
+                closeDashboardBtn.classList.add('hidden');
+            } else {
+                populateDashboard();
+                unifiedDashboard.classList.add('expanded');
+                dashboardBackdrop.classList.add('active');
+                closeDashboardBtn.classList.remove('hidden');
+                setTimeout(() => searchInput.focus(), 400);
+            }
+        }
+
+        dashboardToggleBtn.addEventListener('click', (e) => {
+            if (!unifiedDashboard.classList.contains('expanded')) {
+                toggleDashboard();
+            }
         });
+        
+        closeDashboardBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDashboard();
+        });
+        
+        dashboardBackdrop.addEventListener('click', toggleDashboard);
+
+        function populateDashboard() {
+            dashboardContent.innerHTML = '';
+            const activeNodes = nodes.filter(n => !n.isArchived && n.type !== 'core');
+            
+            // 1. Critical Attention (Needs Help)
+            const helpNodes = activeNodes.filter(n => n.needsHelp && n.status !== 'Done');
+            if (helpNodes.length > 0) {
+                const section = createDashboardSection('Requires Assistance', helpNodes.length, 'critical');
+                helpNodes.forEach(n => section.list.appendChild(createDashboardItem(n, 'critical')));
+                dashboardContent.appendChild(section.container);
+            }
+
+            // 2. In-Progress Notes
+            const progressNodes = activeNodes.filter(n => n.type === 'note' && n.status === 'In-Progress' && !n.needsHelp);
+            if (progressNodes.length > 0) {
+                const section = createDashboardSection('In-Progress Notes', progressNodes.length);
+                progressNodes.forEach(n => section.list.appendChild(createDashboardItem(n, 'progress')));
+                dashboardContent.appendChild(section.container);
+            }
+
+            // 3. New Notes
+            const newNodes = activeNodes.filter(n => n.type === 'note' && n.status === 'New' && !n.needsHelp);
+            if (newNodes.length > 0) {
+                const section = createDashboardSection('New Tasks', newNodes.length);
+                newNodes.forEach(n => section.list.appendChild(createDashboardItem(n)));
+                dashboardContent.appendChild(section.container);
+            }
+
+            // 4. Topic Folders
+            const topicNodes = activeNodes.filter(n => n.type === 'topic');
+            if (topicNodes.length > 0) {
+                const section = createDashboardSection('Active Topics', topicNodes.length);
+                topicNodes.forEach(n => section.list.appendChild(createDashboardItem(n)));
+                dashboardContent.appendChild(section.container);
+            }
+
+            // 5. Departments
+            const deptNodes = activeNodes.filter(n => n.type === 'dept');
+            if (deptNodes.length > 0) {
+                const section = createDashboardSection('Departments', deptNodes.length);
+                deptNodes.forEach(n => section.list.appendChild(createDashboardItem(n)));
+                dashboardContent.appendChild(section.container);
+            }
+        }
+
+        function createDashboardSection(title, count, modifierClass = '') {
+            const container = document.createElement('div');
+            
+            const header = document.createElement('div');
+            header.className = 'dash-section-title';
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = title;
+            if (modifierClass === 'critical') titleSpan.style.color = '#ef4444';
+            
+            const badgeSpan = document.createElement('span');
+            badgeSpan.className = 'dash-badge';
+            if (modifierClass === 'critical') badgeSpan.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+            badgeSpan.textContent = count;
+            
+            header.appendChild(titleSpan);
+            header.appendChild(badgeSpan);
+            
+            const list = document.createElement('div');
+            list.className = 'dash-list';
+            
+            container.appendChild(header);
+            container.appendChild(list);
+            
+            return { container, list };
+        }
+
+        function createDashboardItem(node, modifierClass = '') {
+            const item = document.createElement('div');
+            item.className = `dash-item ${modifierClass}`;
+            
+            let statusHtml = '';
+            if (node.status && node.type === 'note') {
+                const sClass = node.status === 'New' ? 'text-gray-400 border-gray-500' : (node.status === 'In-Progress' ? 'text-yellow-400 border-yellow-500' : 'text-green-400 border-green-500');
+                statusHtml = `<span class="text-[0.45rem] px-1.5 py-0.5 rounded-full border ${sClass} uppercase">${node.status}</span>`;
+            }
+
+            item.innerHTML = `
+                <div class="dash-item-title">
+                    <span class="truncate">${node.name}</span>
+                    ${statusHtml}
+                </div>
+                <div class="dash-item-path">${getNodePath(node.id)}</div>
+            `;
+            
+            item.addEventListener('click', () => {
+                if (unifiedDashboard.classList.contains('expanded')) toggleDashboard();
+                if (isHiddenNode(node)) {
+                    if (hideDoneNodes && node.status === 'Done') {
+                        document.getElementById('toggle-hide-done-checkbox').checked = false;
+                        hideDoneNodes = false;
+                        rebuildLineGeometry();
+                    }
+                }
+                panToNode(node);
+                openViewModal(node);
+            });
+            
+            return item;
+        }
+
+        viewSettingsWidget.addEventListener('click', () => {
+            viewSettingsMenu.style.display = viewSettingsMenu.style.display === 'flex' ? 'none' : 'flex';
+        });
+
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase(); searchResults.innerHTML = '';
             if (term.length < 2) { searchResults.style.display = 'none'; return; }
@@ -1594,13 +1826,19 @@
                 results.forEach(n => {
                     const item = document.createElement('div'); item.className = 'search-result-item';
                     item.innerHTML = `<span class="search-result-name">${n.name}</span><span class="search-result-path">${getNodePath(n.id)}</span>`;
-                    item.addEventListener('click', () => { panToNode(n); openViewModal(n); }); searchResults.appendChild(item);
+                    item.addEventListener('click', () => { 
+                        if (unifiedDashboard.classList.contains('expanded')) toggleDashboard();
+                        panToNode(n); 
+                        openViewModal(n); 
+                    }); 
+                    searchResults.appendChild(item);
                 });
             } else { searchResults.style.display = 'none'; }
         });
         document.getElementById('toggle-labels-checkbox').addEventListener('change', (e) => { showLabels = e.target.checked; });
         document.getElementById('toggle-hide-done-checkbox').addEventListener('change', (e) => { hideDoneNodes = e.target.checked; selectedNode = null; contextMenu.style.display = 'none'; rebuildLineGeometry(); });
 
+        // --- STREAMING_CHUNK:Finalizing Modal Controls and Utilities ---
         // --- FORMS & ACTIONS ---
         const deptSelect = document.getElementById('edit-profile-dept');
 
@@ -1889,21 +2127,6 @@
             }
         });
         
-        function handleTabSwitch(e) {
-            if (!logsWidget.classList.contains('expanded')) logsWidget.classList.add('expanded');
-            const tabBtn = e.currentTarget;
-            document.querySelectorAll('.log-tab-btn').forEach(btn => btn.classList.remove('active', 'active-help'));
-            document.querySelectorAll('.logs-panel').forEach(p => p.classList.remove('active-panel'));
-            tabBtn.classList.add('active'); if (tabBtn.dataset.target === 'panel-help') tabBtn.classList.add('active-help');
-            const targetPanel = document.getElementById(tabBtn.dataset.target); if (targetPanel) targetPanel.classList.add('active-panel');
-            if (logsWidget.classList.contains('expanded')) {
-                if (targetPanel === panelSys) { unreadSysLogs = 0; sysBadge.style.display = 'none'; }
-                if (targetPanel) targetPanel.scrollTop = targetPanel.scrollHeight;
-            }
-        }
-        document.getElementById('tab-sys-btn').addEventListener('click', handleTabSwitch); 
-        document.getElementById('tab-help-btn').addEventListener('click', handleTabSwitch);
-
         function logAction(tag, message) {
             const entry = document.createElement('div'); entry.className = 'log-entry';
             entry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString([], { hour12: false })}]</span> <span class="log-tag ${tag}">[${tag}]</span> ${message}`;
@@ -1913,22 +2136,16 @@
         }
         
         function updateHelpList() {
-            if (!panelHelp || !helpBadge) return; panelHelp.innerHTML = '';
-            const hNodes = nodes.filter(n => n.needsHelp && n.status !== 'Done' && !n.isArchived);
-            if (hNodes.length === 0) { helpBadge.style.display = 'none'; panelHelp.innerHTML = `<div class="text-xs text-gray-500 text-center mt-4">All nodes operating nominally.</div>`; return; }
-            helpBadge.textContent = hNodes.length; helpBadge.style.display = 'inline-block';
-            hNodes.forEach(n => {
-                const entry = document.createElement('div'); entry.className = 'help-entry';
-                entry.innerHTML = `<div class="help-path">${getNodePath(n.id)}</div><div class="help-name"><span class="help-icon">!</span> ${n.name}</div>`;
-                entry.addEventListener('click', () => panToNode(n)); panelHelp.appendChild(entry);
-            });
+            if (typeof unifiedDashboard !== 'undefined' && unifiedDashboard.classList.contains('expanded')) {
+                populateDashboard();
+            }
         }
 
         // --- LAUNCH & SYNC ---
         const googleProvider = new GoogleAuthProvider();
 
         testModeBtn.addEventListener('click', () => {
-            if (isTestMode) return; // Prevent double-clicking during the fade out animation
+            if(isAppStarted) return; // Prevent duplicate execution
             isTestMode = true;
             document.getElementById('profile-name').textContent = "Test User";
             document.getElementById('profile-avatar').textContent = "T";
@@ -1946,20 +2163,17 @@
         });
 
         googleLoginBtn.addEventListener('click', async () => { 
+            if(isAppStarted) return; // Prevent duplicate execution
             try {
                 loginError.classList.add('hidden');
                 testModeBtn.classList.add('hidden');
                 
-                // Important: Prompts user to select account if they have multiple
                 googleProvider.setCustomParameters({ prompt: 'select_account' });
-                
-                // Trigger native Firebase Google Auth Popup
                 const result = await signInWithPopup(auth, googleProvider);
                 const user = result.user;
                 const email = user.email || '';
                 const domain = email.split('@')[1];
 
-                // Validate Domain Restrictions Post-Auth
                 if (domain === 'inventi.ph' || domain === 'inventi.asia') {
                     userId = user.uid;
                     logAction('SYNC', `Authentication accepted for ${email}. Commencing secure link...`);
@@ -1972,10 +2186,8 @@
                     const savedDept = localStorage.getItem('hive_profile_dept');
                     if (savedDept) document.getElementById('profile-dept').textContent = savedDept;
 
-                    // 1. Start Live Snapshot Sync
                     startRealtimeSync();
 
-                    // 2. Check for Seed Data
                     setTimeout(async () => {
                         await seedDatabaseIfEmpty();
                         
@@ -1988,14 +2200,12 @@
                     }, 1000);
 
                 } else { 
-                    // Domain does not match whitelist - immediately revoke access
                     await signOut(auth);
                     loginError.textContent = `ACCESS DENIED: Domain @${domain || 'unknown'} is unauthorized.`; 
                     loginError.classList.remove('hidden'); 
                     testModeBtn.classList.remove('hidden');
                 }
             } catch (error) {
-                // Handle error gracefully without throwing console exceptions
                 if (error.code === 'auth/popup-closed-by-user') {
                     loginError.textContent = `AUTHENTICATION CANCELLED.`;
                 } else {
