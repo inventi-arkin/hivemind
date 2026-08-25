@@ -2264,11 +2264,24 @@
             }
         });
 
+        // --- STREAMING_CHUNK:Integrating Gemini AI API ---
         // --- AI & GEMINI API INTEGRATION ---
         
+        async function getGeminiApiKey() {
+            let key = localStorage.getItem('hive_gemini_key');
+            if (!key) {
+                key = prompt("Please enter your Gemini API Key to use the Oracle features.\nThis will be saved locally in your browser.");
+                if (key) {
+                    localStorage.setItem('hive_gemini_key', key);
+                }
+            }
+            return key;
+        }
+
         async function callGeminiAPI(prompt, expectJson = false) {
-            // YOU MUST INSERT YOUR GEMINI API KEY HERE
-            const apiKey = ""; 
+            const apiKey = await getGeminiApiKey();
+            if (!apiKey) return null;
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
             
             const payload = {
@@ -2306,6 +2319,12 @@
                     }
                     return null;
                 } catch (error) {
+                    if (error.message.includes("400") || error.message.includes("403")) {
+                         // Likely an invalid API key. Clear it so the user can re-enter.
+                         console.error("Invalid API Key detected. Clearing local storage.");
+                         localStorage.removeItem('hive_gemini_key');
+                         return null;
+                    }
                     if (i === 2) return null;
                     await new Promise(res => setTimeout(res, delay));
                     delay *= 2;
@@ -2320,7 +2339,7 @@
                 
                 aiTaskBtn.disabled = true;
                 aiTaskBtn.innerHTML = `<svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-                
+
                 const prompt = `You are an AI assistant in a project management system called "The Hive Mind". 
 The user is working on a note titled: "${selectedNode.name}".
 Description: "${selectedNode.description || 'No description'}".
