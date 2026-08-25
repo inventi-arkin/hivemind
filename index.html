@@ -112,33 +112,29 @@
         #dashboard-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 95; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
         #dashboard-backdrop.active { opacity: 1; pointer-events: auto; }
         
-        #unified-dashboard {
-            position: fixed; top: 20px; left: 20px; width: 140px; height: 44px; z-index: 105;
+        /* Unified Top-Left Control Center */
+        #unified-controls-widget {
+            position: fixed; top: 20px; left: 20px; height: 44px; z-index: 105;
             background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-            display: flex; flex-direction: column; overflow: hidden; pointer-events: auto;
+            display: flex; align-items: center; padding: 0 4px; pointer-events: auto; transition: opacity 0.3s ease;
         }
-        #unified-dashboard:hover:not(.expanded) { background: rgba(255, 255, 255, 0.1); cursor: pointer; border-color: rgba(6, 182, 212, 0.4); }
-        
-        #unified-dashboard.expanded {
-            top: 0; left: 0; width: 380px; max-width: 90vw; height: 100vh;
+
+        #unified-dashboard {
+            position: fixed; top: 0; left: 0; width: 380px; max-width: 90vw; height: 100vh;
             border-radius: 0; border: none; border-right: 1px solid rgba(6, 182, 212, 0.3);
             background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(30px);
             box-shadow: 10px 0 30px rgba(0,0,0,0.8);
-            cursor: default;
+            z-index: 104; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            display: flex; flex-direction: column; pointer-events: auto;
         }
+        #unified-dashboard.expanded { transform: translateX(0); }
 
         .dash-collapsed-header {
-            display: flex; align-items: center; gap: 12px; padding: 10px 15px; height: 44px; min-height: 44px;
-            transition: padding 0.4s;
-        }
-        #unified-dashboard.expanded .dash-collapsed-header {
-            padding: 20px 20px 10px 20px; height: auto; min-height: 60px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; align-items: center; gap: 12px; padding: 20px 20px 10px 20px; height: auto; min-height: 60px;
+            border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
         }
         
-        #dashboard-expanded-content { display: none; flex-direction: column; flex-grow: 1; overflow: hidden; opacity: 0; transition: opacity 0.3s; }
-        #unified-dashboard.expanded #dashboard-expanded-content { display: flex; opacity: 1; transition-delay: 0.2s; }
+        #dashboard-expanded-content { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; }
 
         .dash-content { padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 24px; }
         .dash-section-title { font-size: 0.65rem; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; }
@@ -392,11 +388,33 @@
                 <button id="rearrange-btn" class="glass-button w-full py-1.5 rounded text-white text-[10px] font-bold tracking-widest uppercase">RE-ARRANGE NETWORK</button>
             </div>
 
-            <!-- Unified Dashboard & Hive Mind Toggle -->
+            <!-- Unified Dashboard Backdrop -->
             <div id="dashboard-backdrop"></div>
+            
+            <!-- Unified Top-Left Control Center (Merged Hive Mind & Oracle) -->
+            <div id="unified-controls-widget">
+                <!-- Dashboard Trigger -->
+                <div id="dashboard-toggle-btn" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors h-full" title="Search & Task Overview">
+                    <div class="atom-logo small">
+                        <div class="nucleus"></div>
+                        <div class="electron-ring ring-1"><div class="electron"></div></div>
+                        <div class="electron-ring ring-2"><div class="electron"></div></div>
+                        <div class="electron-ring ring-3"><div class="electron"></div></div>
+                    </div>
+                    <span class="text-xs font-bold tracking-widest text-white pointer-events-none whitespace-nowrap">HIVE MIND</span>
+                </div>
+                
+                <div class="w-px h-5 bg-white/20 mx-1"></div>
+                
+                <!-- Oracle Trigger -->
+                <div id="oracle-trigger-btn" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/10 rounded-lg transition-colors h-full" title="Hive Mind Oracle">
+                    <span id="oracle-btn-text" class="text-xs font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 pointer-events-none whitespace-nowrap">ORACLE ✨</span>
+                </div>
+            </div>
+
+            <!-- The Sliding Dashboard Panel -->
             <div id="unified-dashboard">
-                <!-- Collapsed state header -->
-                <div id="dashboard-toggle-btn" class="dash-collapsed-header">
+                <div class="dash-collapsed-header">
                     <div class="atom-logo small flex-shrink-0">
                         <div class="nucleus"></div>
                         <div class="electron-ring ring-1"><div class="electron"></div></div>
@@ -404,10 +422,9 @@
                         <div class="electron-ring ring-3"><div class="electron"></div></div>
                     </div>
                     <span class="text-xs font-bold tracking-widest text-white pointer-events-none whitespace-nowrap">HIVE MIND</span>
-                    <button id="close-dashboard-btn" class="ml-auto text-gray-400 hover:text-white transition-colors hidden pointer-events-auto z-10 p-2">✕</button>
+                    <button id="close-dashboard-btn" class="ml-auto text-gray-400 hover:text-white transition-colors pointer-events-auto z-10 p-2">✕</button>
                 </div>
                 
-                <!-- Expanded Content (Hidden when collapsed) -->
                 <div id="dashboard-expanded-content">
                     <!-- Search -->
                     <div class="px-5 py-3 border-b border-white/10 flex-shrink-0 pointer-events-auto">
@@ -553,22 +570,22 @@
 
             <!-- View / Note Details Modal -->
             <div id="view-modal" class="interactive fixed inset-0 z-[120] hidden items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
-                <div class="glass-panel p-6 rounded-3xl w-full max-w-sm text-left flex flex-col max-h-[90vh]">
+                <div class="glass-panel p-6 rounded-3xl w-full max-w-md text-left flex flex-col max-h-[90vh]">
                     <div id="view-needs-help-banner" class="shrink-0 hidden mb-2 bg-red-500/20 text-red-400 border border-red-500/50 py-1.5 px-2 rounded text-xs font-bold text-center flex items-center justify-center gap-2">
                         <div class="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">!</div> Node Requires Assistance
                     </div>
                     
                     <div class="shrink-0 flex justify-between items-center mb-1.5">
-                        <h2 id="view-node-title" class="text-xl font-bold tracking-[0.1em] text-cyan-400 truncate">TITLE</h2>
-                        <span id="view-node-status" class="hidden text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase border shrink-0 ml-2"></span>
+                        <h2 id="view-node-title" class="text-2xl font-bold tracking-[0.1em] text-cyan-400 truncate">TITLE</h2>
+                        <span id="view-node-status" class="hidden text-[0.6rem] px-3 py-1 rounded-full font-bold uppercase border shrink-0 ml-2"></span>
                     </div>
                     
-                    <div id="view-dates-container" class="shrink-0 hidden flex gap-4 text-[9px] text-gray-400 mb-2 uppercase tracking-widest bg-white/5 py-1.5 px-3 rounded">
-                        <div>START: <span id="view-start-date" class="text-cyan-400">--</span></div>
-                        <div>END: <span id="view-end-date" class="text-pink-400">--</span></div>
+                    <div id="view-dates-container" class="shrink-0 hidden flex gap-4 text-[9px] text-gray-400 mb-2 uppercase tracking-widest bg-black/40 border border-white/5 py-2 px-3 rounded-lg">
+                        <div>START: <span id="view-start-date" class="text-cyan-400 font-bold">--</span></div>
+                        <div>END: <span id="view-end-date" class="text-pink-400 font-bold">--</span></div>
                     </div>
 
-                    <div class="shrink-0 w-full h-px bg-white/20 mb-2"></div>
+                    <div class="shrink-0 w-full h-px bg-white/20 mb-2 mt-1"></div>
                     
                     <p id="view-node-desc" class="shrink-0 text-gray-300 text-sm mb-3 max-h-24 overflow-y-auto" style="white-space: pre-wrap;"></p>
                     
@@ -578,6 +595,7 @@
                         <form id="view-task-form" class="shrink-0 flex gap-2 mt-1">
                             <input type="text" id="view-task-input" placeholder="Add new task..." class="glass-input flex-grow px-2 py-1.5 text-xs rounded" autocomplete="off">
                             <button type="submit" class="glass-button px-3 py-1.5 text-[10px] font-bold rounded">ADD</button>
+                            <button type="button" id="ai-task-btn" class="glass-button px-3 py-1.5 text-[10px] font-bold rounded" style="background: linear-gradient(90deg, #8b5cf6, #d946ef);" title="Auto-generate tasks with AI">✨</button>
                         </form>
                     </div>
 
@@ -644,6 +662,31 @@
                     </div>
                     
                     <button type="button" onclick="document.getElementById('archive-modal').style.display='none'" class="glass-button w-full py-3 rounded-lg text-white text-sm font-bold tracking-widest mt-auto cursor-pointer">CLOSE DIRECTORY</button>
+                </div>
+            </div>
+
+            <!-- Oracle Modal -->
+            <div id="oracle-modal" class="interactive fixed inset-0 z-[140] hidden items-center justify-center bg-black/80 backdrop-blur-md">
+                <div class="glass-panel p-8 rounded-3xl w-full max-w-lg text-left flex flex-col max-h-[90vh]" style="border-color: rgba(168, 85, 247, 0.4); box-shadow: 0 0 40px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.05);">
+                    <h2 class="text-2xl font-bold mb-2 tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 flex items-center gap-3 flex-shrink-0">
+                        HIVE MIND ORACLE ✨
+                    </h2>
+                    <p class="text-xs text-purple-300/70 mb-4 uppercase tracking-widest flex-shrink-0">System-Wide Intelligence Analysis</p>
+                    
+                    <div class="w-full h-px bg-purple-500/20 mb-5 flex-shrink-0"></div>
+                    
+                    <div id="oracle-content" class="text-gray-200 text-sm mb-6 overflow-y-auto leading-relaxed space-y-4 font-mono flex-grow pr-2">
+                        <!-- AI Response goes here -->
+                    </div>
+
+                    <div class="w-full h-px bg-purple-500/20 my-4 flex-shrink-0"></div>
+
+                    <form id="oracle-chat-form" class="flex gap-2 flex-shrink-0 mb-4">
+                        <input type="text" id="oracle-chat-input" placeholder="Ask the Oracle about your network..." class="glass-input flex-grow px-3 py-2 text-xs rounded-lg" autocomplete="off" style="border-color: rgba(168, 85, 247, 0.4);">
+                        <button type="submit" id="oracle-chat-submit" class="glass-button px-4 py-2 text-xs font-bold rounded-lg tracking-widest" style="background: linear-gradient(90deg, #8b5cf6, #d946ef);">ASK</button>
+                    </form>
+                    
+                    <button type="button" onclick="document.getElementById('oracle-modal').style.display='none'" class="glass-button w-full py-2 rounded-lg text-white text-xs font-bold tracking-widest cursor-pointer flex-shrink-0" style="background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); border-color: rgba(255,255,255,0.2);">CLOSE</button>
                 </div>
             </div>
             
@@ -722,6 +765,7 @@
         // Modals & Forms
         const viewSettingsMenu = document.getElementById('view-settings-menu');
         const viewSettingsWidget = document.getElementById('view-settings-widget');
+        const unifiedControlsWidget = document.getElementById('unified-controls-widget');
         const unifiedDashboard = document.getElementById('unified-dashboard');
         const dashboardToggleBtn = document.getElementById('dashboard-toggle-btn');
         const closeDashboardBtn = document.getElementById('close-dashboard-btn');
@@ -732,7 +776,16 @@
         const chatModal = document.getElementById('chat-modal');
         const logoutBtn = document.getElementById('logout-btn');
 
-        // --- STREAMING_CHUNK:Initializing WebGL Environment ---
+        // Oracle & AI Elements
+        const oracleTriggerBtn = document.getElementById('oracle-trigger-btn');
+        const oracleBtnText = document.getElementById('oracle-btn-text');
+        const oracleModal = document.getElementById('oracle-modal');
+        const oracleContent = document.getElementById('oracle-content');
+        const oracleChatForm = document.getElementById('oracle-chat-form');
+        const oracleChatInput = document.getElementById('oracle-chat-input');
+        const oracleChatSubmit = document.getElementById('oracle-chat-submit');
+        const aiTaskBtn = document.getElementById('ai-task-btn');
+
         // --- INITIALIZE THREE.JS ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color('#020205');
@@ -806,7 +859,6 @@
         const warpStars = new THREE.LineSegments(starGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending }));
         backgroundGroup.add(warpStars);
 
-        // --- STREAMING_CHUNK:Connecting to Firebase and Sync Engine ---
         // --- FIREBASE DATA & SYNC ENGINE ---
         async function initAuth() {
             try {
@@ -1031,7 +1083,6 @@
             }
         }
 
-        // --- STREAMING_CHUNK:Defining Logic and State Management ---
         // --- CORE LOGIC ---
         function isHiddenNode(node) { 
             if (!node) return true;
@@ -1291,7 +1342,6 @@
             }
         });
 
-        // --- STREAMING_CHUNK:Constructing 3D Nodes and Particles ---
         // --- WEBGL DATA MANAGEMENT ---
         function createWebGLNode(node) {
             if(node.threeGroup) scene.remove(node.threeGroup); if(node.htmlLabel) node.htmlLabel.remove();
@@ -1404,7 +1454,6 @@
             }
         }
 
-        // --- STREAMING_CHUNK:Running Physical Render Loop ---
         function render() {
             requestAnimationFrame(render); if (!isAppStarted) return;
             const time = clock.getElapsedTime();
@@ -1561,7 +1610,6 @@
             renderer.render(scene, camera);
         }
 
-        // --- STREAMING_CHUNK:Attaching User Inputs and Listeners ---
         // --- INTERACTION ---
         container.addEventListener('mousedown', (e) => {
             if (homeView.style.display === 'none') return;
@@ -1677,7 +1725,6 @@
             }
         });
 
-        // --- STREAMING_CHUNK:Constructing Dashboard and Search Flow ---
         // --- SEARCH ENGINE & DASHBOARD ---
         function toggleDashboard() {
             const isExpanded = unifiedDashboard.classList.contains('expanded');
@@ -1685,11 +1732,13 @@
                 unifiedDashboard.classList.remove('expanded');
                 dashboardBackdrop.classList.remove('active');
                 closeDashboardBtn.classList.add('hidden');
+                unifiedControlsWidget.style.opacity = '1';
             } else {
                 populateDashboard();
                 unifiedDashboard.classList.add('expanded');
                 dashboardBackdrop.classList.add('active');
                 closeDashboardBtn.classList.remove('hidden');
+                unifiedControlsWidget.style.opacity = '0';
                 setTimeout(() => searchInput.focus(), 400);
             }
         }
@@ -1838,7 +1887,6 @@
         document.getElementById('toggle-labels-checkbox').addEventListener('change', (e) => { showLabels = e.target.checked; });
         document.getElementById('toggle-hide-done-checkbox').addEventListener('change', (e) => { hideDoneNodes = e.target.checked; selectedNode = null; contextMenu.style.display = 'none'; rebuildLineGeometry(); });
 
-        // --- STREAMING_CHUNK:Finalizing Modal Controls and Utilities ---
         // --- FORMS & ACTIONS ---
         const deptSelect = document.getElementById('edit-profile-dept');
 
@@ -2215,6 +2263,216 @@
                 testModeBtn.classList.remove('hidden');
             }
         });
+
+        // --- AI & GEMINI API INTEGRATION ---
+        
+        async function callGeminiAPI(prompt, expectJson = false) {
+            // YOU MUST INSERT YOUR GEMINI API KEY HERE
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            if (expectJson) {
+                payload.generationConfig = { 
+                    responseMimeType: "application/json",
+                    responseSchema: { type: "ARRAY", items: { type: "STRING" } }
+                };
+            }
+
+            let delay = 1000;
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            await new Promise(res => setTimeout(res, delay));
+                            delay *= 2;
+                            continue;
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0].content) {
+                        return result.candidates[0].content.parts[0].text;
+                    }
+                    return null;
+                } catch (error) {
+                    if (i === 2) return null;
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+            }
+            return null;
+        }
+
+        if (aiTaskBtn) {
+            aiTaskBtn.addEventListener('click', async () => {
+                if(!selectedNode || selectedNode.type !== 'note' || selectedNode.isArchived) return;
+                
+                aiTaskBtn.disabled = true;
+                aiTaskBtn.innerHTML = `<svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                
+                const prompt = `You are an AI assistant in a project management system called "The Hive Mind". 
+The user is working on a note titled: "${selectedNode.name}".
+Description: "${selectedNode.description || 'No description'}".
+Please break this down into 3 highly specific, actionable checklist items.`;
+
+                try {
+                    const responseJson = await callGeminiAPI(prompt, true);
+                    if(responseJson) {
+                        const newTasks = JSON.parse(responseJson);
+                        if(Array.isArray(newTasks)) {
+                            newTasks.forEach(taskText => {
+                                selectedNode.taskList.push({ 
+                                    id: Date.now() + Math.floor(Math.random()*1000), 
+                                    text: taskText, 
+                                    done: false,
+                                    lastModified: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
+                                    lastModifiedBy: 'Oracle AI', 
+                                    comments: []
+                                });
+                            });
+                            nodeDerivedStatus(selectedNode); 
+                            renderTaskList(); 
+                            logAction('EDIT', `Oracle AI generated ${newTasks.length} tasks for "${selectedNode.name}"`);
+                            createWebGLNode(selectedNode); 
+                            rebuildEdges();
+                            updateHelpList();
+                            await updateNodeInDB(selectedNode.id, {
+                                taskList: selectedNode.taskList,
+                                status: selectedNode.status,
+                                needsHelp: selectedNode.needsHelp
+                            });
+                        }
+                    }
+                } catch(e) {
+                    console.error("Task Gen Error", e);
+                } finally {
+                    aiTaskBtn.disabled = false;
+                    aiTaskBtn.innerHTML = '✨';
+                }
+            });
+        }
+
+        if (oracleTriggerBtn) {
+            oracleTriggerBtn.addEventListener('click', async () => {
+                oracleTriggerBtn.style.pointerEvents = 'none';
+                oracleBtnText.textContent = 'ANALYZING...';
+                
+                const activeNotes = nodes.filter(n => n.type === 'note' && !n.isArchived);
+                const helpNeeded = activeNotes.filter(n => n.needsHelp).map(n => n.name).join(", ");
+                const inProgress = activeNotes.filter(n => n.status === 'In-Progress').map(n => n.name).join(", ");
+                
+                const prompt = `You are the "Hive Mind Oracle", a highly intelligent, slightly cryptic, yet professional AI overseeing a neural network of tasks. 
+Here is the current state of the network:
+Nodes requiring immediate assistance: ${helpNeeded || 'None'}
+Nodes currently in progress: ${inProgress || 'None'}
+Total active nodes: ${activeNotes.length}
+
+Provide a concise, 2-paragraph strategic analysis of the network's health. 
+First paragraph: Summarize the current state and identify any bottlenecks (focusing on nodes needing help).
+Second paragraph: Provide a brief, inspiring directive to the team ("Operators") on what to focus on next.
+Keep the tone sci-fi, analytical, and authoritative. Format the output in HTML using <b> or <em> tags where appropriate, but do not use markdown blocks or \`\`\`.`;
+
+                try {
+                    const responseText = await callGeminiAPI(prompt, false);
+                    if(responseText) {
+                        oracleContent.innerHTML = responseText.replace(/\n/g, '<br>');
+                        oracleModal.style.display = 'flex';
+                        logAction('SYSTEM', 'Oracle AI provided network analysis.');
+                    } else {
+                        oracleContent.innerHTML = "<span class='text-red-400'>Communication with the Oracle failed. Neural interference detected.</span>";
+                        oracleModal.style.display = 'flex';
+                    }
+                } catch(e) {
+                    console.error("Oracle Error", e);
+                } finally {
+                    oracleTriggerBtn.style.pointerEvents = 'auto';
+                    oracleBtnText.textContent = 'ORACLE ✨';
+                }
+            });
+        }
+
+        // --- ORACLE CHAT FEATURE ---
+        if (oracleChatForm) {
+            oracleChatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const query = oracleChatInput.value.trim();
+                if (!query) return;
+
+                oracleChatSubmit.disabled = true;
+                oracleChatSubmit.innerHTML = `<svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+                // Build context from current network state
+                const activeNotes = nodes.filter(n => n.type === 'note' && !n.isArchived);
+                let contextStr = "Current Neural Network Data Context:\n\n";
+                
+                activeNotes.forEach(node => {
+                    contextStr += `Node: "${node.name}"\n`;
+                    contextStr += `  Status: ${node.status}\n`;
+                    contextStr += `  Needs Help: ${node.needsHelp}\n`;
+                    contextStr += `  Start Date: ${node.startDate || 'Not set'}\n`;
+                    contextStr += `  End Date: ${node.endDate || 'Not set'}\n`;
+                    if (node.taskList && node.taskList.length > 0) {
+                        contextStr += `  Tasks:\n`;
+                        node.taskList.forEach(task => {
+                            contextStr += `   - [${task.done ? 'x' : ' '}] ${task.text} (Last updated: ${task.lastModified || 'Unknown'})\n`;
+                        });
+                    } else {
+                        contextStr += `  Tasks: None\n`;
+                    }
+                    contextStr += `\n`;
+                });
+
+                const prompt = `You are the "Hive Mind Oracle", a highly intelligent AI assistant overseeing a task management system. 
+You are speaking directly to an Operator. Answer their question based ONLY on the following data context. 
+If the answer is not in the data, state that you do not have that information.
+Keep your response concise, helpful, and maintain a slight sci-fi/analytical tone. Do not use markdown code blocks (\`\`\`). Use basic HTML tags like <b> for bolding if needed.
+
+${contextStr}
+
+Operator's Question: "${query}"`;
+
+                // Add user query to the chat view immediately
+                const userBubble = document.createElement('div');
+                userBubble.className = "mb-4 text-right";
+                userBubble.innerHTML = `<div class="inline-block bg-purple-500/20 border border-purple-500/30 text-purple-100 px-3 py-2 rounded-lg text-xs max-w-[80%] word-break text-left">${query}</div>`;
+                oracleContent.appendChild(userBubble);
+                oracleContent.scrollTop = oracleContent.scrollHeight;
+                oracleChatInput.value = '';
+
+                try {
+                    const responseText = await callGeminiAPI(prompt, false);
+                    
+                    const aiBubble = document.createElement('div');
+                    aiBubble.className = "mb-4 text-left";
+                    
+                    if(responseText) {
+                        aiBubble.innerHTML = `<div class="inline-block bg-black/40 border border-white/10 text-gray-200 px-3 py-2 rounded-lg text-xs max-w-[90%] word-break font-sans">${responseText.replace(/\n/g, '<br>')}</div>`;
+                    } else {
+                        aiBubble.innerHTML = `<div class="inline-block bg-red-900/30 border border-red-500/30 text-red-300 px-3 py-2 rounded-lg text-xs max-w-[90%] word-break font-sans">Neural interference detected. Query failed.</div>`;
+                    }
+                    
+                    oracleContent.appendChild(aiBubble);
+                    oracleContent.scrollTop = oracleContent.scrollHeight;
+
+                } catch(e) {
+                    console.error("Oracle Chat Error", e);
+                } finally {
+                    oracleChatSubmit.disabled = false;
+                    oracleChatSubmit.innerHTML = 'ASK';
+                }
+            });
+        }
     </script>
 </body>
 </html>
