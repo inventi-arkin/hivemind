@@ -2387,15 +2387,30 @@ Please break this down into 3 highly specific, actionable checklist items.`;
                 oracleTriggerBtn.style.pointerEvents = 'none';
                 oracleBtnText.textContent = 'ANALYZING...';
                 
-                const activeNotes = nodes.filter(n => n.type === 'note' && !n.isArchived);
-                const helpNeeded = activeNotes.filter(n => n.needsHelp).map(n => n.name).join(", ");
-                const inProgress = activeNotes.filter(n => n.status === 'In-Progress').map(n => n.name).join(", ");
+                let allNodes = [];
+                if (isTestMode || !userId) {
+                    allNodes = nodes; // Fallback to local
+                } else {
+                    try {
+                        const snap = await getDocs(nodesCollection);
+                        snap.forEach(doc => allNodes.push(doc.data()));
+                    } catch (e) {
+                        console.error("Firebase fetch failed for Oracle, using local data", e);
+                        allNodes = nodes;
+                    }
+                }
+
+                const notes = allNodes.filter(n => n.type === 'note');
+                const helpNeeded = notes.filter(n => n.needsHelp && !n.isArchived).map(n => n.name).join(", ");
+                const inProgress = notes.filter(n => n.status === 'In-Progress' && !n.isArchived).map(n => n.name).join(", ");
+                const archivedData = notes.filter(n => n.isArchived).map(n => n.name).join(", ");
                 
                 const prompt = `You are the "Hive Mind Oracle", a highly intelligent, slightly cryptic, yet professional AI overseeing a neural network of tasks. 
-Here is the current state of the network:
-Nodes requiring immediate assistance: ${helpNeeded || 'None'}
-Nodes currently in progress: ${inProgress || 'None'}
-Total active nodes: ${activeNotes.length}
+Here is the current state of the network (including active and archived data from the database):
+Nodes requiring immediate assistance (Active): ${helpNeeded || 'None'}
+Nodes currently in progress (Active): ${inProgress || 'None'}
+Archived Nodes (Historical): ${archivedData || 'None'}
+Total nodes (Active & Archived): ${notes.length}
 
 Provide a concise, 2-paragraph strategic analysis of the network's health. 
 First paragraph: Summarize the current state and identify any bottlenecks (focusing on nodes needing help).
@@ -2431,14 +2446,28 @@ Keep the tone sci-fi, analytical, and authoritative. Format the output in HTML u
                 oracleChatSubmit.disabled = true;
                 oracleChatSubmit.innerHTML = `<svg class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
-                // Build context from current network state
-                const activeNotes = nodes.filter(n => n.type === 'note' && !n.isArchived);
-                let contextStr = "Current Neural Network Data Context:\n\n";
+                // Build context from current network state (Fetch directly from Firebase)
+                let allNodes = [];
+                if (isTestMode || !userId) {
+                    allNodes = nodes; // Fallback to local
+                } else {
+                    try {
+                        const snap = await getDocs(nodesCollection);
+                        snap.forEach(doc => allNodes.push(doc.data()));
+                    } catch (e) {
+                        console.error("Firebase fetch failed for Oracle, using local data", e);
+                        allNodes = nodes;
+                    }
+                }
+
+                const notes = allNodes.filter(n => n.type === 'note');
+                let contextStr = "Current Neural Network Data Context (Active & Archived Data from Firebase):\n\n";
                 
-                activeNotes.forEach(node => {
+                notes.forEach(node => {
                     contextStr += `Node: "${node.name}"\n`;
                     contextStr += `  Status: ${node.status}\n`;
                     contextStr += `  Needs Help: ${node.needsHelp}\n`;
+                    contextStr += `  Archived: ${node.isArchived ? 'Yes' : 'No'}\n`;
                     contextStr += `  Start Date: ${node.startDate || 'Not set'}\n`;
                     contextStr += `  End Date: ${node.endDate || 'Not set'}\n`;
                     if (node.taskList && node.taskList.length > 0) {
